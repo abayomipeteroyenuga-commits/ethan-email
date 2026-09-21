@@ -73,6 +73,13 @@ app.get('/api/admin/provisioning/status',requireAuth,requireAdmin,(req,res)=>res
 app.get('/api/admin/mailboxes',requireAuth,requireAdmin,async(req,res)=>{try{res.json({mailboxes:await listProvisionedMailboxes(200)});}catch(e){res.status(500).json({error:'Could not load mailbox directory'})}});
 app.post('/api/admin/mailboxes',requireAuth,requireAdmin,async(req,res)=>{try{const localPart=String(req.body.localPart||'').trim().toLowerCase();const userId=req.body.userId?Number(req.body.userId):null;const domain=(process.env.EMAIL_DOMAIN||'ethandigitalacademy.org').trim().toLowerCase();if(!localPartOk(localPart))return res.status(400).json({error:'Use 1–50 lowercase letters, numbers, dots, underscores or hyphens'});if(userId&&!await getUserById(userId))return res.status(404).json({error:'Selected user was not found'});const address=`${localPart}@${domain}`;const mailboxId=`spacemail:${address}`;const box=await saveProvisionedMailbox({userId,mailboxId,address,provider:'spacemail',status:'registered'});res.status(201).json({ok:true,mailbox:{id:box.mailbox_id,address:box.mailbox_address,status:box.status}});}catch(e){res.status(409).json({error:'Mailbox may already be registered in Ethan Email'})}});
 app.delete('/api/admin/mailboxes/:id',requireAuth,requireAdmin,async(req,res)=>{try{await removeProvisionedMailbox(req.params.id);res.json({ok:true});}catch(e){res.status(500).json({error:'Could not remove mailbox from Ethan Email directory'})}});
-app.use(express.static(path.join(__dirname),{extensions:['html']}));
-app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'index.html')));
+app.use(express.static(path.join(__dirname)));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.use((req, res) => {
+  res.status(404).send('Not found');
+});
 initDb().then(()=>app.listen(PORT,()=>console.log(`Ethan Email Phase 4 running on port ${PORT}`))).catch(e=>{console.error('Database initialization failed:',e.message);process.exit(1)});
