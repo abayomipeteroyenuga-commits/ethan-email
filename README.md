@@ -1,32 +1,10 @@
-# ETHAN EMAIL — Phase 4 Spaceship/Spacemail Edition
+# Ethan Kids — Ethan ID integration
 
-This build replaces the Hostinger-specific provisioning integration with a Spaceship **Spacemail** integration model for `ethandigitalacademy.org`.
+This build replaces the previous separate Ethan Kids sign-in with the existing Ethan Hub Supabase project. Deploy the Hub and Kids folders to their respective GitHub/Vercel projects; do not merge the folders into one site.
 
-## Included
-- Multi-user Ethan Email app accounts
-- PostgreSQL-backed users and sessions
-- Encrypted per-user mailbox credentials
-- Real IMAP inbox loading
-- Real SMTP sending
-- Spaceship Spacemail presets built into Mailbox Settings
-- Admin mailbox directory to register/link existing Spacemail addresses to Ethan Email users
-- PWA support and responsive UI
+1. Deploy Ethan Kids to its own HTTPS address.
+2. In ETHAN-HUB/index.html set `kidsUrl:''` to the exact deployed Kids URL (e.g. `https://YOUR-KIDS-DOMAIN`), then deploy Hub. The Kids tile stays disabled until this is set.
+3. Confirm the `ethan-sso` Edge Function is deployed in the Ethan ID Supabase project and its `SSO_SECRET` is configured. Keep this secret server-side. Both apps must use the SAME Ethan ID project.
+4. Sign into Hub, click Ethan Kids, and test the handoff and sign-out. Kids progress remains local to each browser.
 
-## Spacemail connection used
-- IMAP host: `mail.spacemail.com`
-- IMAP port: `993`
-- IMAP security: SSL/TLS
-- SMTP host: `mail.spacemail.com`
-- SMTP port: `465`
-- SMTP security: SSL/TLS
-- Username: the full mailbox address, e.g. `support@ethandigitalacademy.org`
-- Password: that mailbox's Spacemail password
-
-## Important limitation
-Spaceship publicly documents IMAP/SMTP/POP3 access, but this build does **not** assume an undocumented mailbox-provisioning API. Create/delete actual mailboxes in Spaceship → Spacemail Manager. The Ethan Email Admin screen registers and links existing Spacemail mailboxes inside the app only.
-
-## Vercel / hosting environment variables
-Add these server-side variables: `DATABASE_URL`, `DATABASE_SSL`, `SESSION_SECRET`, `MAIL_CREDENTIALS_KEY`, `EMAIL_DOMAIN`, and `REGISTRATION_MODE`. There are **no Hostinger variables** in this edition.
-
-## DNS
-If `ethandigitalacademy.org` uses Spaceship nameservers, Spacemail normally adds its mail DNS records automatically. If DNS is hosted elsewhere, configure Spacemail MX/SPF/DKIM/DMARC records in that DNS provider.
+IMPORTANT SECURITY LIMITATIONS: The existing Hub SSO function returns bearer session credentials when a ticket is exchanged. Tickets are currently reusable for their 60-second lifetime and are passed in the URL; avoid treating this as a production-hardened child-safety/SSO solution until a server-side single-use handoff, strict allowed origins/targets and dedicated authorization rules are implemented. The Kids frontend checks a valid, confirmed Ethan ID, NOT an adult's identity or role. Do not claim adult-only enforcement; adult supervision and server-enforced authorization are needed before public launch. Static assets on public hosting cannot be secured by client-side route guards alone.
