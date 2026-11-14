@@ -15,22 +15,28 @@
 </head>
 <body>
 <div id="authView" class="auth-shell">
-  <div class="auth-brand"><img class="brand-logo auth-logo" src="/assets/ethan-email-mark.svg" alt="Ethan Digital Academy logo"><div><strong>ETHAN <span>EMAIL</span></strong><small>by Ethan Digital Academy</small></div></div>
-  <section class="auth-card">
-    <div class="eyebrow">YOUR COMMUNICATION HUB</div>
-    <h1 id="authTitle">Welcome to Ethan Email</h1>
-    <p id="authIntro">One inbox for your work, life and ideas.</p>
-    <form id="authForm">
-      <label id="nameWrap" class="hidden">Full name<input id="displayName" autocomplete="name" placeholder="Your full name"></label>
-      <label>Email address<input id="email" type="email" required autocomplete="username" placeholder="you@example.com"></label>
-      <label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="Enter your password"><small class="password-help">Use at least 10 characters, including letters and numbers.</small></label>
-      <button class="primary full" id="authSubmit" type="submit">Sign in</button>
-    </form>
-    <p class="auth-error" id="authError" role="alert"></p>
-    <div class="auth-switch"><span id="switchText">New to Ethan Email?</span> <button class="text-button" id="switchMode" type="button">Create an account</button></div>
-    <div class="auth-note"><span>▣</span> Secure sign-in <i>·</i> Private by design</div>
+  <section class="auth-showcase">
+    <div class="showcase-brand"><img src="/assets/ethan-email-mark.svg" alt="ETHAN EMAIL logo"><div><strong>ETHAN <span>EMAIL</span></strong><small>BY ETHAN DIGITAL ACADEMY</small></div></div>
+    <div class="showcase-copy"><span class="showcase-kicker">YOUR COMMUNICATION. REIMAGINED.</span><h2>Make every<br><em>message matter.</em></h2><p>A smarter home for your conversations, ideas and work. Stay connected with an email experience built around you.</p>
+      <div class="showcase-features"><div><b>✦</b><span><strong>One connected inbox</strong><small>Keep important conversations close.</small></span></div><div><b>⌁</b><span><strong>Simple, focused workspace</strong><small>Less clutter. More clarity.</small></span></div><div><b>◈</b><span><strong>Designed by Ethan</strong><small>Powered by Ethan Digital Academy.</small></span></div></div>
+    </div>
+    <div class="showcase-bottom"><span>ETHAN DIGITAL ACADEMY</span><span>LEARN · BUILD · GROW · LEAD</span></div><div class="showcase-orb orb-one"></div><div class="showcase-orb orb-two"></div>
   </section>
-  <footer>© <span id="year">2026</span> Ethan Digital Academy. All rights reserved.</footer>
+  <div class="auth-panel"><div class="auth-mobile-brand"><img src="/assets/ethan-email-mark.svg" alt="ETHAN EMAIL logo"><strong>ETHAN <span>EMAIL</span></strong></div>
+    <section class="auth-card">
+      <div class="eyebrow">YOUR COMMUNICATION HUB</div><h1 id="authTitle">Welcome to Ethan Email</h1><p id="authIntro">One inbox for your work, life and ideas.</p>
+      <form id="authForm">
+        <label id="nameWrap" class="hidden">Full name<input id="displayName" autocomplete="name" placeholder="Your full name"></label>
+        <label>Email address<input id="email" type="email" required autocomplete="username" placeholder="you@example.com"></label>
+        <label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="Enter your password"><small class="password-help">Use at least 10 characters, including letters and numbers.</small></label>
+        <button class="primary full" id="authSubmit" type="submit">Sign in</button>
+      </form>
+      <p class="auth-error" id="authError" role="alert"></p>
+      <div class="auth-switch"><span id="switchText">New to Ethan Email?</span> <button class="text-button" id="switchMode" type="button">Create an account</button></div>
+      <div class="auth-note"><span>▣</span> Secure sign-in <i>·</i> Private by design</div>
+    </section>
+    <footer>© <span id="year">2026</span> Ethan Digital Academy. All rights reserved.</footer>
+  </div>
 </div>
 
 <div id="appView" class="app-shell hidden">
