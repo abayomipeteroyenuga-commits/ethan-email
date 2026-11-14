@@ -1,1 +1,25 @@
-{"name":"ethan-email","version":"5.0.0","private":true,"type":"commonjs","scripts":{"start":"node server.js","check":"node --check server.js && node --check app.js && node --check db.js && node --check lib/mailbox.js && node --check lib/crypto.js"},"dependencies":{"bcryptjs":"^2.4.3","connect-pg-simple":"^10.0.0","dotenv":"^16.4.7","express":"^4.21.2","express-rate-limit":"^7.5.0","express-session":"^1.18.1","helmet":"^8.0.0","imapflow":"^1.0.181","mailparser":"^3.7.2","nodemailer":"^6.10.0","pg":"^8.13.1","resend":"^6.38.1"}}
+{
+  "name": "ethan-email",
+  "version": "5.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check app.js && node --check db.js && node --check lib/mailbox.js && node --check lib/crypto.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "imapflow": "^1.0.181",
+    "mailparser": "^3.7.2",
+    "nodemailer": "^6.10.0",
+    "pg": "^8.13.1",
+    "resend": "^6.38.1",
+    "serverless-http": "^3.2.0"
+  }
+}
