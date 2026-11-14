@@ -5,7 +5,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check app.js && node --check db.js && node --check lib/mailbox.js && node --check lib/crypto.js"
+    "check": "node --check server.js && node --check app.js && node --check db.js && node --check lib/mailbox.js && node --check lib/crypto.js",
+    "build:netlify": "node scripts/netlify-build.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
