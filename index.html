@@ -1,10 +1,94 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#102b55"><meta name="description" content="Ethan Email — your communication hub from Ethan Digital Academy."><link rel="manifest" href="/manifest.webmanifest"><link rel="stylesheet" href="/style.css"><title>ETHAN EMAIL</title></head><body>
-<div id="authView" class="auth-shell"><div class="auth-brand"><div class="brand-mark">E</div><div><strong>ETHAN <span>EMAIL</span></strong><small>Powered by Ethan Digital Academy</small></div></div><section class="auth-card"><div class="eyebrow">YOUR COMMUNICATION HUB</div><h1 id="authTitle">Welcome to Ethan Email</h1><p id="authIntro">One inbox for your work, life and ideas.</p><form id="authForm"><label id="nameWrap" class="hidden">Full name<input id="displayName" autocomplete="name" placeholder="Your name"></label><label>Email address<input id="email" type="email" required autocomplete="username" placeholder="you@example.com"></label><label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="At least 10 characters"></label><button class="primary full" id="authSubmit">Sign in</button></form><p class="auth-error" id="authError" role="alert"></p><div class="auth-switch"><span id="switchText">New to Ethan Email?</span> <button class="text-button" id="switchMode" type="button">Create an account</button></div><div class="auth-note">Secure sign-in · Private by design</div></section><footer>© Ethan Digital Academy</footer></div>
-<div id="appView" class="app-shell hidden"><aside class="sidebar"><a class="brand" href="#"><div class="brand-mark">E</div><div><strong>ETHAN <span>EMAIL</span></strong><small>Mail that moves with you</small></div></a><button class="compose-button" id="composeBtn">＋ <span>Compose</span></button><nav class="folders"><button class="folder active" data-folder="inbox"><span>▣</span> Inbox <b id="inboxCount"></b></button><button class="folder" data-folder="drafts"><span>▤</span> Drafts</button><button class="folder" data-folder="sent"><span>↗</span> Sent</button></nav><div class="sidebar-bottom"><div class="storage-note"><span class="dot" id="connectionDot"></span><span>Mailbox</span><b id="connectionState">Not connected</b></div><button class="folder" data-view="mailbox"><span>✉</span> Ethan address</button><button class="folder" data-view="settings"><span>⚙</span> Settings</button><button class="folder" data-view="admin" id="adminNav" hidden><span>▦</span> Admin</button><button class="folder" id="logoutBtn"><span>⇥</span> Sign out</button></div></aside>
-<main class="main-panel"><header class="topbar"><div><div class="eyebrow">ETHAN WORKSPACE</div><h1 id="viewTitle">Inbox</h1></div><div class="top-actions"><div class="searchbox"><span>⌕</span><input id="searchInput" placeholder="Search your mail"></div><button class="icon-button" id="refreshBtn" title="Refresh">↻</button><div class="avatar" id="avatar">E</div></div></header>
-<section id="mailView" class="mail-layout"><div class="mail-toolbar"><div><input type="checkbox" id="selectAll" aria-label="Select all"><button class="icon-button" id="refreshList" title="Refresh">↻</button></div><span id="mailCount">Your messages will appear here</span><span></span></div><div id="messageList" class="message-list"><div class="empty-state"><div class="empty-icon">✉</div><h2>Your inbox starts here</h2><p>Connect your mailbox or request an Ethan email address.</p><button class="primary" data-view="mailbox">Get an Ethan address</button></div></div></section>
-<section id="mailboxView" class="content-view hidden"><div class="settings-intro"><div class="eyebrow">ETHAN MAIL SERVICE</div><h2>Your Ethan email address</h2><p>Request a professional address ending in @ethandigitalacademy.org. Our mail administrator activates it through Ethan's Resend-powered email service.</p></div><div class="settings-grid"><article class="settings-card"><div class="card-icon">✉</div><h3>Request your mailbox</h3><p>Choose the address name you want. It will be reviewed and activated by an administrator.</p><form id="mailboxRequestForm"><label>Preferred address<input id="localPart" maxlength="50" required placeholder="e.g. abayomi.peter"><small class="hint">Your address will be <b id="addressPreview">name@ethandigitalacademy.org</b></small></label><button class="primary" type="submit">Request Ethan address</button><p id="requestStatus" class="status-line"></p></form></article><article class="settings-card accent-card"><div class="card-icon">✓</div><h3>Mailbox status</h3><div class="domain-preview" id="mailboxCurrent">No active Ethan mailbox</div><p id="mailboxStatusText">After approval, your Ethan address will be activated here.</p><p class="small-muted">Your Ethan Email sign-in and your SpaceMail mailbox password are protected separately.</p></article></div></section>
-<section id="settingsView" class="content-view hidden"><div class="settings-intro"><div class="eyebrow">CONNECTIVITY</div><h2>Connect an existing account</h2><p>Connect an external email account using its provider's SMTP and IMAP details. Your Ethan mailbox is powered by Resend after administrator activation.</p></div><article class="settings-card settings-wide"><form id="mailSettingsForm" class="settings-form"><label>Display name<input id="fromName" placeholder="Your name"></label><label>From email address<input id="fromAddress" type="email" required placeholder="you@example.com"></label><div class="form-divider">Incoming mail · IMAP</div><div class="two-col"><label>IMAP host<input id="imapHost" required></label><label>Port<input id="imapPort" type="number" value="993" required></label></div><label>IMAP username<input id="imapUser" required></label><label>IMAP password<input id="imapPass" type="password" placeholder="Leave blank to keep saved password"></label><div class="form-divider">Outgoing mail · SMTP</div><div class="two-col"><label>SMTP host<input id="smtpHost" required></label><label>Port<input id="smtpPort" type="number" value="465" required></label></div><label>SMTP username<input id="smtpUser" required></label><label>SMTP password<input id="smtpPass" type="password" placeholder="Leave blank to keep saved password"></label><div class="check-row"><label><input id="imapSecure" type="checkbox" checked> IMAP TLS</label><label><input id="smtpSecure" type="checkbox" checked> SMTP TLS</label></div><div class="button-row"><button class="primary" type="submit">Save connection</button><button class="secondary" type="button" id="testConnection">Test connection</button></div><p id="settingsStatus" class="status-line"></p></form></article></section>
-<section id="adminView" class="content-view hidden"><div class="settings-intro"><div class="eyebrow">ADMINISTRATION</div><h2>Mailbox provisioning</h2><p>Create the mailbox in SpaceMail Manager first, then activate it here with the generated mailbox password. Passwords are encrypted before storage.</p></div><div class="admin-list" id="adminRequests"><p>Loading requests…</p></div><div class="settings-intro"><h2>Registered accounts</h2></div><div class="admin-list" id="adminUsers"></div></section>
-</main></div>
-<div id="composeModal" class="modal hidden" role="dialog" aria-modal="true"><div class="compose-window"><header><strong>New message</strong><button class="icon-button" id="closeCompose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="email" required placeholder="recipient@example.com"></label><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label><div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="submit" class="primary">Send ↗</button></div></form></div></div><div id="toast" class="toast" role="status"></div><script src="/app.js" defer></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#102b55">
+<meta name="description" content="ETHAN EMAIL — secure, professional email from Ethan Digital Academy.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<title>ETHAN EMAIL | Ethan Digital Academy</title>
+<style>.hidden{display:none!important}#authView.hidden,#appView.hidden{display:none!important}</style>
+</head>
+<body>
+<div id="authView" class="auth-shell">
+  <div class="auth-brand"><div class="brand-mark">E</div><div><strong>ETHAN <span>EMAIL</span></strong><small>by Ethan Digital Academy</small></div></div>
+  <section class="auth-card">
+    <div class="eyebrow">YOUR COMMUNICATION HUB</div>
+    <h1 id="authTitle">Welcome to Ethan Email</h1>
+    <p id="authIntro">One inbox for your work, life and ideas.</p>
+    <form id="authForm">
+      <label id="nameWrap" class="hidden">Full name<input id="displayName" autocomplete="name" placeholder="Your full name"></label>
+      <label>Email address<input id="email" type="email" required autocomplete="username" placeholder="you@example.com"></label>
+      <label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="Enter your password"></label>
+      <button class="primary full" id="authSubmit" type="submit">Sign in</button>
+    </form>
+    <p class="auth-error" id="authError" role="alert"></p>
+    <div class="auth-switch"><span id="switchText">New to Ethan Email?</span> <button class="text-button" id="switchMode" type="button">Create an account</button></div>
+    <div class="auth-note"><span>▣</span> Secure sign-in <i>·</i> Private by design</div>
+  </section>
+  <footer>© <span id="year">2026</span> Ethan Digital Academy. All rights reserved.</footer>
+</div>
+
+<div id="appView" class="app-shell hidden">
+  <aside class="sidebar">
+    <a class="brand" href="#" aria-label="Ethan Email home"><div class="brand-mark">E</div><div><strong>ETHAN <span>EMAIL</span></strong><small>Mail that moves with you</small></div></a>
+    <button class="compose-button" id="composeBtn"><span class="compose-plus">＋</span> Compose</button>
+    <div class="nav-caption">MAILBOX</div>
+    <nav class="folders">
+      <button class="folder active" data-folder="inbox"><span class="nav-icon">▣</span> Inbox <b id="inboxCount"></b></button>
+      <button class="folder" data-folder="drafts"><span class="nav-icon">▤</span> Drafts</button>
+      <button class="folder" data-folder="sent"><span class="nav-icon">↗</span> Sent</button>
+    </nav>
+    <div class="nav-caption secondary-caption">YOUR ACCOUNT</div>
+    <div class="sidebar-bottom">
+      <div class="storage-note"><span class="dot" id="connectionDot"></span><span>Mailbox</span><b id="connectionState">Checking…</b></div>
+      <button class="folder" data-view="mailbox"><span class="nav-icon">✉</span> Ethan address</button>
+      <button class="folder" data-view="settings"><span class="nav-icon">⚙</span> Settings</button>
+      <button class="folder" data-view="admin" id="adminNav" hidden><span class="nav-icon">▦</span> Administration</button>
+      <button class="folder signout" id="logoutBtn"><span class="nav-icon">⇥</span> Sign out</button>
+    </div>
+    <div class="sidebar-footer">POWERED BY ETHAN DIGITAL ACADEMY</div>
+  </aside>
+  <main class="main-panel">
+    <header class="topbar">
+      <div><div class="eyebrow">ETHAN WORKSPACE</div><h1 id="viewTitle">Inbox</h1></div>
+      <div class="top-actions"><div class="searchbox"><span>⌕</span><input id="searchInput" placeholder="Search your mail" aria-label="Search your mail"></div><button class="icon-button" id="refreshBtn" title="Refresh inbox" aria-label="Refresh inbox">↻</button><div class="avatar" id="avatar">E</div></div>
+    </header>
+
+    <section id="mailView" class="mail-layout">
+      <div class="mail-toolbar"><div><input type="checkbox" id="selectAll" aria-label="Select all messages"><button class="icon-button" id="refreshList" title="Refresh">↻</button></div><span id="mailCount">Your messages will appear here</span><span class="toolbar-label">ETHAN MAIL</span></div>
+      <div id="messageList" class="message-list"><div class="empty-state"><div class="empty-icon">✉</div><h2>Your inbox starts here</h2><p>Your messages will appear here once your Ethan mailbox is activated.</p><button class="primary" data-view="mailbox">Get an Ethan address</button></div></div>
+    </section>
+
+    <section id="mailboxView" class="content-view hidden">
+      <div class="settings-intro"><div class="eyebrow">ETHAN MAIL SERVICE</div><h2>Your professional email address</h2><p>Request your own email address ending in <strong>@ethandigitalacademy.org</strong>. Once approved, your inbox will be ready to use inside ETHAN EMAIL.</p></div>
+      <div class="settings-grid">
+        <article class="settings-card"><div class="card-icon">✉</div><h3>Request your mailbox</h3><p>Choose the professional address you would like to use. Our administrator will review your request.</p><form id="mailboxRequestForm"><label>Preferred address<input id="localPart" maxlength="50" required placeholder="e.g. abayomi.peter"><small class="hint">Your address will be <b id="addressPreview">name@ethandigitalacademy.org</b></small></label><button class="primary" type="submit">Request email address <span>→</span></button><p id="requestStatus" class="status-line"></p></form></article>
+        <article class="settings-card accent-card"><div class="card-icon">✓</div><h3>Mailbox status</h3><div class="domain-preview" id="mailboxCurrent">No active Ethan mailbox</div><p id="mailboxStatusText">Your mailbox status will appear here.</p><div class="secure-note"> <span>▣</span> Powered by Ethan's secure Resend mail service.</div></article>
+      </div>
+    </section>
+
+    <section id="settingsView" class="content-view hidden">
+      <div class="settings-intro"><div class="eyebrow">PREFERENCES</div><h2>Account settings</h2><p>Manage your Ethan Email account. Your sign-in credentials are separate from your email mailbox.</p></div>
+      <article class="settings-card settings-wide account-settings"><div class="account-setting-row"><div class="setting-symbol">👤</div><div><strong>Account profile</strong><p>Your registered name and email are used to identify your Ethan Email account.</p></div></div><div class="account-setting-row"><div class="setting-symbol">🔐</div><div><strong>Account security</strong><p>Keep your password private. Ethan Email will never ask you to share it with an administrator.</p></div></div><div class="account-setting-row"><div class="setting-symbol">✉</div><div><strong>Email service</strong><p>Your approved Ethan address is hosted through Ethan's Resend-powered mail service.</p></div></div></article>
+      <form id="mailSettingsForm" class="hidden" aria-hidden="true"><input id="fromName"><input id="fromAddress"><input id="imapHost"><input id="imapPort"><input id="imapUser"><input id="imapPass"><input id="smtpHost"><input id="smtpPort"><input id="smtpUser"><input id="smtpPass"><input id="imapSecure" type="checkbox"><input id="smtpSecure" type="checkbox"><button type="submit">Save</button></form>
+      <p id="settingsStatus" class="status-line"></p>
+    </section>
+
+    <section id="adminView" class="content-view hidden">
+      <div class="settings-intro"><div class="eyebrow">ADMINISTRATION</div><h2>Mailbox requests</h2><p>Review address requests and activate approved Ethan mailboxes. Activation provisions the address through the Resend mail service.</p></div>
+      <div class="admin-list" id="adminRequests"><p>Loading requests…</p></div>
+      <div class="settings-intro"><h2>Registered accounts</h2></div><div class="admin-list" id="adminUsers"></div>
+    </section>
+  </main>
+</div>
+
+<div id="composeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="composeTitle"><div class="compose-window"><header><strong id="composeTitle">New message</strong><button class="icon-button" id="closeCompose" aria-label="Close compose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="email" required placeholder="recipient@example.com"></label><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label><div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="submit" class="primary">Send message ↗</button></div></form></div></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="/app.js" defer></script>
+<script>document.getElementById('year').textContent=new Date().getFullYear();</script>
+</body></html>
