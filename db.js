@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS drafts_user_idx ON email_drafts(user_id,updated_at DE
 CREATE INDEX IF NOT EXISTS audit_events_user_idx ON audit_events(user_id,created_at DESC);
 `);}
 async function getUserByEmail(email){const r=await pool.query('SELECT id,email,password_hash,display_name,role,created_at FROM users WHERE email=$1',[email]);return r.rows[0]||null}
-async function getUserById(id){const r=await pool.query('SELECT u.id,u.email,u.display_name,u.role,u.created_at,p.mailbox_address,p.status AS mailbox_status FROM users u LEFT JOIN provisioned_mailboxes p ON p.user_id=u.id WHERE u.id=$1',[id]);return r.rows[0]||null}
+async function getUserById(id){const r=await pool.query('SELECT u.id,u.email,u.display_name,u.role,u.created_at,p.mailbox_address,COALESCE(p.status,mr.status) AS mailbox_status FROM users u LEFT JOIN provisioned_mailboxes p ON p.user_id=u.id LEFT JOIN LATERAL (SELECT status FROM mailbox_requests WHERE user_id=u.id ORDER BY created_at DESC LIMIT 1) mr ON true WHERE u.id=$1',[id]);return r.rows[0]||null}
 async function createUser({email,passwordHash,displayName,role='user'}){const r=await pool.query('INSERT INTO users(email,password_hash,display_name,role) VALUES($1,$2,$3,$4) RETURNING id,email,display_name,role,created_at',[email,passwordHash,displayName,role]);return r.rows[0]}
 async function listUsers(limit=100){const r=await pool.query('SELECT u.id,u.email,u.display_name,u.role,u.created_at,p.mailbox_address,p.status AS mailbox_status FROM users u LEFT JOIN provisioned_mailboxes p ON p.user_id=u.id ORDER BY u.created_at DESC LIMIT $1',[limit]);return r.rows}
 async function getMailboxSettings(id){const r=await pool.query('SELECT * FROM mailbox_settings WHERE user_id=$1',[id]);return r.rows[0]||null}
