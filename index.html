@@ -15,7 +15,7 @@
 </head>
 <body>
 <div id="authView" class="auth-shell">
-  <div class="auth-brand"><div class="brand-mark">E</div><div><strong>ETHAN <span>EMAIL</span></strong><small>by Ethan Digital Academy</small></div></div>
+  <div class="auth-brand"><img class="brand-logo auth-logo" src="/assets/ethan-email-logo.png" alt="Ethan Digital Academy logo"><div><strong>ETHAN <span>EMAIL</span></strong><small>by Ethan Digital Academy</small></div></div>
   <section class="auth-card">
     <div class="eyebrow">YOUR COMMUNICATION HUB</div>
     <h1 id="authTitle">Welcome to Ethan Email</h1>
@@ -23,7 +23,7 @@
     <form id="authForm">
       <label id="nameWrap" class="hidden">Full name<input id="displayName" autocomplete="name" placeholder="Your full name"></label>
       <label>Email address<input id="email" type="email" required autocomplete="username" placeholder="you@example.com"></label>
-      <label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="Enter your password"></label>
+      <label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="Enter your password"><small class="password-help">Use at least 10 characters, including letters and numbers.</small></label>
       <button class="primary full" id="authSubmit" type="submit">Sign in</button>
     </form>
     <p class="auth-error" id="authError" role="alert"></p>
@@ -35,7 +35,7 @@
 
 <div id="appView" class="app-shell hidden">
   <aside class="sidebar">
-    <a class="brand" href="#" aria-label="Ethan Email home"><div class="brand-mark">E</div><div><strong>ETHAN <span>EMAIL</span></strong><small>Mail that moves with you</small></div></a>
+    <a class="brand" href="#" aria-label="Ethan Email home"><img class="brand-logo" src="/assets/ethan-email-logo.png" alt="Ethan Digital Academy logo"><div><strong>ETHAN <span>EMAIL</span></strong><small>Mail that moves with you</small></div></a>
     <button class="compose-button" id="composeBtn"><span class="compose-plus">＋</span> Compose</button>
     <div class="nav-caption">MAILBOX</div>
     <nav class="folders">
