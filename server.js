@@ -12,7 +12,7 @@ app.set('trust proxy',process.env.TRUST_PROXY==='1'?1:false);
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'","https://fonts.googleapis.com"],fontSrc:["'self'","https://fonts.gstatic.com"],imgSrc:["'self'","data:"],scriptSrc:["'self'"],connectSrc:["'self'"]}}}));
 app.use(express.json({limit:'1mb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}));app.use(express.urlencoded({extended:false}));
 app.use(session({store:new pgSession({pool,tableName:'user_sessions',createTableIfMissing:true}),name:'ethan.sid',secret:process.env.SESSION_SECRET,resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite:'lax',secure:process.env.NODE_ENV==='production',maxAge:8*60*60*1000}}));
-const authLimit=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false}),registerLimit=rateLimit({windowMs:60*60*1000,limit:5,standardHeaders:'draft-7',legacyHeaders:false}),mailLimit=rateLimit({windowMs:60*60*1000,limit:60,standardHeaders:'draft-7',legacyHeaders:false});
+const authLimit=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false}),registerLimit=rateLimit({windowMs:60*60*1000,limit:5,standardHeaders:'draft-7',legacyHeaders:false,handler:(req,res)=>res.status(429).json({error:'Too many sign-up attempts. Please wait a little while before trying again.'})}),mailLimit=rateLimit({windowMs:60*60*1000,limit:60,standardHeaders:'draft-7',legacyHeaders:false});
 const emailOk=v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)&&v.length<=254;
 const localPartOk=v=>/^[a-z0-9](?:[a-z0-9._-]{0,48}[a-z0-9])?$/.test(v)&&!v.includes('..')&&!v.startsWith('.')&&!v.endsWith('.');
 const reserved=new Set(['admin','administrator','support','security','abuse','postmaster','hostmaster','webmaster','root','noreply','no-reply','mailer-daemon','billing','sales','info','help']);
@@ -24,7 +24,39 @@ async function requireAdmin(req,res,next){try{const u=await getUserById(req.sess
 async function mailboxFor(id){const s=await getMailboxSettings(id);if(!s)return null;return{fromName:s.from_name,fromAddress:s.from_address,smtpHost:s.smtp_host,smtpPort:s.smtp_port,smtpSecure:s.smtp_secure,smtpUser:s.smtp_user,smtpPass:decrypt(s.smtp_pass_enc),imapHost:s.imap_host,imapPort:s.imap_port,imapSecure:s.imap_secure,imapUser:s.imap_user,imapPass:decrypt(s.imap_pass_enc)}}
 app.get('/api/health',(req,res)=>res.json({ok:true,service:'Ethan Email',provider:process.env.RESEND_API_KEY?'Resend':'not-configured',time:new Date().toISOString()}));
 app.post('/api/webhooks/resend',async(req,res)=>{try{if(!process.env.RESEND_WEBHOOK_SECRET)return res.status(503).json({error:'Webhook signing secret is not configured'});const event=resend().webhooks.verify({payload:(req.rawBody||Buffer.from('')).toString('utf8'),headers:{'svix-id':req.get('svix-id'),'svix-timestamp':req.get('svix-timestamp'),'svix-signature':req.get('svix-signature')},secret:process.env.RESEND_WEBHOOK_SECRET});if(event.type!=='email.received')return res.status(200).json({received:true});const received=await resend().emails.receiving.get(event.data.email_id);if(received.error||!received.data)throw new Error('Could not retrieve inbound message');const mail=received.data;const recipients=[...(Array.isArray(mail.to)?mail.to:[mail.to||event.data.to||[]]).flat(),...(Array.isArray(event.data.to)?event.data.to:[])].filter(Boolean).map(x=>String(x).toLowerCase());const owners=await findResendMailboxUsers([...new Set(recipients)]);for(const owner of owners){await saveReceivedEmail({userId:owner.user_id,providerEmailId:event.data.email_id,from:mail.from||event.data.from||'',to:recipients,cc:Array.isArray(mail.cc)?mail.cc:[],subject:mail.subject||event.data.subject||'',textBody:mail.text||'',htmlBody:mail.html||'',receivedAt:mail.created_at||event.created_at})}return res.status(200).json({received:true,stored:owners.length})}catch(e){console.error('Resend webhook rejected:',e.message);return res.status(400).json({error:'Invalid or unprocessable Resend webhook'})}});
-app.post('/api/auth/register',registerLimit,async(req,res)=>{if(!registrationOpen())return res.status(403).json({error:'Registration is temporarily closed'});const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||''),displayName=String(req.body.displayName||'').trim().slice(0,100);if(!emailOk(email))return res.status(400).json({error:'Enter a valid email address'});if(password.length<10)return res.status(400).json({error:'Use a password with at least 10 characters'});if(!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))return res.status(400).json({error:'Password must contain letters and numbers'});try{if(await getUserByEmail(email))return res.status(409).json({error:'An account with this email already exists'});const adminEmail=String(process.env.BOOTSTRAP_ADMIN_EMAIL||'').trim().toLowerCase();const role=adminEmail&&email===adminEmail?'admin':'user';const user=await createUser({email,passwordHash:await bcrypt.hash(password,12),displayName:displayName||email.split('@')[0],role});await audit(user.id,'account.created',{role});req.session.userId=user.id;req.session.save(err=>{if(err)return res.status(500).json({error:'Could not create secure session'});res.status(201).json({ok:true,user:safeUser(user)})})}catch(e){res.status(500).json({error:'Could not create account'})}});
+app.post('/api/auth/register',registerLimit,async(req,res)=>{
+  if(!registrationOpen())return res.status(403).json({error:'New account registration is temporarily closed. Please try again later.'});
+  const email=String(req.body?.email||'').trim().toLowerCase();
+  const password=String(req.body?.password||'');
+  const displayName=String(req.body?.displayName||'').trim().slice(0,100);
+  if(!emailOk(email))return res.status(400).json({error:'Enter a valid email address.'});
+  if(!displayName)return res.status(400).json({error:'Please enter your full name.'});
+  if(password.length<10)return res.status(400).json({error:'Your password must contain at least 10 characters.'});
+  if(!/[A-Za-z]/.test(password)||!/[0-9]/.test(password))return res.status(400).json({error:'Your password must include both letters and numbers.'});
+  try{
+    const adminEmail=String(process.env.BOOTSTRAP_ADMIN_EMAIL||'').trim().toLowerCase();
+    const role=adminEmail&&email===adminEmail?'admin':'user';
+    const passwordHash=await bcrypt.hash(password,12);
+    let user;
+    try{user=await createUser({email,passwordHash,displayName,role})}
+    catch(dbError){
+      if(dbError.code==='23505')return res.status(409).json({error:'An account with this email already exists. Sign in instead.'});
+      throw dbError;
+    }
+    try{await audit(user.id,'account.created',{role})}catch(auditError){console.warn('Account audit event could not be saved:',auditError.code||auditError.message)}
+    req.session.regenerate(err=>{
+      if(err){console.error('Registration session regeneration failed:',err.message);return res.status(201).json({ok:true,user:safeUser(user),notice:'Your account was created. Please sign in to continue.'})}
+      req.session.userId=user.id;
+      req.session.save(saveError=>{
+        if(saveError){console.error('Registration session save failed:',saveError.message);return res.status(201).json({ok:true,user:safeUser(user),notice:'Your account was created. Please sign in to continue.'})}
+        return res.status(201).json({ok:true,user:safeUser(user)});
+      });
+    });
+  }catch(e){
+    console.error('Account registration failed:',e.code||e.name||'Error',e.message);
+    return res.status(500).json({error:'We could not create your account right now. Please try again. If this continues, contact Ethan Digital Academy support.'});
+  }
+});
 app.post('/api/auth/login',authLimit,async(req,res)=>{const email=String(req.body.email||'').trim().toLowerCase(),password=String(req.body.password||'');try{const user=await getUserByEmail(email);if(!user||!await bcrypt.compare(password,user.password_hash))return res.status(401).json({error:'Invalid email or password'});req.session.regenerate(err=>{if(err)return res.status(500).json({error:'Could not start secure session'});req.session.userId=user.id;req.session.save(async e=>{if(e)return res.status(500).json({error:'Could not save session'});await audit(user.id,'account.login');res.json({ok:true,user:safeUser(await getUserById(user.id))})})})}catch(e){res.status(500).json({error:'Could not sign in'})}});
 app.post('/api/auth/logout',requireAuth,(req,res)=>{const id=req.session.userId;req.session.destroy(async()=>{res.clearCookie('ethan.sid');try{await audit(id,'account.logout')}catch{}res.json({ok:true})})});
 app.get('/api/auth/me',async(req,res)=>{try{const u=req.session?.userId?await getUserById(req.session.userId):null;res.json({authenticated:Boolean(u),user:safeUser(u),registrationOpen:registrationOpen(),emailDomain:domain})}catch(e){res.status(500).json({error:'Could not load account'})}});
