@@ -27,6 +27,9 @@
       <label>Password<input id="password" type="password" required minlength="10" autocomplete="current-password" placeholder="Enter your password"><small class="password-help">Use at least 10 characters, including letters and numbers.</small></label>
       <button class="primary full" id="authSubmit" type="submit">Sign in</button>
     </form>
+    <button class="text-button" id="forgotPasswordBtn" type="button">Forgot password?</button>
+    <form id="forgotPasswordForm" class="hidden"><label>Email address<input id="resetEmail" type="email" required autocomplete="email" placeholder="you@example.com"></label><button class="primary full" type="submit">Send reset link</button><button class="text-button" id="backToLogin" type="button">Back to sign in</button><p class="auth-error" id="forgotStatus" role="status"></p></form>
+    <form id="resetPasswordForm" class="hidden"><label>New password<input id="newPassword" type="password" required minlength="10" autocomplete="new-password" placeholder="At least 10 characters"></label><label>Confirm new password<input id="confirmPassword" type="password" required minlength="10" autocomplete="new-password" placeholder="Enter it again"></label><button class="primary full" type="submit">Reset password</button><p class="auth-error" id="resetStatus" role="alert"></p></form>
     <p class="auth-error" id="authError" role="alert"></p>
     <div class="auth-switch"><span id="switchText">New to Ethan Email?</span> <button class="text-button" id="switchMode" type="button">Create an account</button></div>
     <div class="auth-note"><span>▣</span> Secure sign-in <i>·</i> Private by design</div>
