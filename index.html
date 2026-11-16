@@ -61,7 +61,7 @@
   <main class="main-panel">
     <header class="topbar">
       <div><div class="eyebrow">ETHAN WORKSPACE</div><h1 id="viewTitle">Inbox</h1></div>
-      <div class="top-actions"><div class="searchbox"><span>⌕</span><input id="searchInput" placeholder="Search your mail" aria-label="Search your mail"></div><button class="icon-button" id="refreshBtn" title="Refresh inbox" aria-label="Refresh inbox">↻</button><div class="avatar" id="avatar">E</div></div>
+      <div class="top-actions"><button class="secondary top-signout" id="topLogoutBtn" type="button">Sign out</button><div class="searchbox"><span>⌕</span><input id="searchInput" placeholder="Search your mail" aria-label="Search your mail"></div><button class="icon-button" id="refreshBtn" title="Refresh inbox" aria-label="Refresh inbox">↻</button><div class="avatar" id="avatar">E</div></div>
     </header>
 
     <section id="mailView" class="mail-layout">
@@ -97,7 +97,7 @@
   </main>
 </div>
 
-<div id="composeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="composeTitle"><div class="compose-window"><header><strong id="composeTitle">New message</strong><button class="icon-button" id="closeCompose" aria-label="Close compose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="email" required placeholder="recipient@example.com"></label><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label><div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="submit" class="primary">Send message ↗</button></div></form></div></div>
+<div id="composeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="composeTitle"><div class="compose-window"><header><strong id="composeTitle">New message</strong><button class="icon-button" id="closeCompose" aria-label="Close compose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="text" required autocomplete="off" placeholder="name@example.com, another@example.com"></label><small class="recipient-help">Send to multiple people by separating email addresses with commas or semicolons. Up to 50 recipients.</small><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label><div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="submit" class="primary">Send message ↗</button></div></form></div></div>
 <div id="toast" class="toast" role="status"></div>
 <script src="/app.js" defer></script>
 <script>document.getElementById('year').textContent=new Date().getFullYear();</script>
