@@ -71,12 +71,12 @@ app.get('/api/auth/me',async(req,res)=>{res.set('Cache-Control','no-store');try{
 async function notifyMailboxRequestAdmin({requestId,address,accountEmail,displayName}){
   const adminEmail=String(process.env.MAILBOX_ADMIN_EMAIL||process.env.BOOTSTRAP_ADMIN_EMAIL||'').trim().toLowerCase();
   if(!emailOk(adminEmail)||!process.env.RESEND_API_KEY)return false;
-  const appUrl=(process.env.APP_URL||'https://email.ethandigitalacademy.org').replace(/\\/$/,'');
+  const appUrl=(process.env.APP_URL||'https://email.ethandigitalacademy.org').replace(/\/$/,'');
   const {error}=await resend().emails.send({
     from:process.env.EMAIL_FROM||'Ethan Email <no-reply@ethandigitalacademy.org>',
     to:[adminEmail],
     subject:'[Ethan Email] Mailbox request #'+requestId+' — '+address,
-    text:'A new Ethan Email mailbox request needs administrator review.\\n\\nRequested address: '+address+'\\nAccount email: '+accountEmail+'\\nName: '+(displayName||'Not provided')+'\\nRequest ID: '+requestId+'\\n\\nSign in to review it under Administration → Mailbox requests: '+appUrl
+    text:'A new Ethan Email mailbox request needs administrator review.\n\nRequested address: '+address+'\nAccount email: '+accountEmail+'\nName: '+(displayName||'Not provided')+'\nRequest ID: '+requestId+'\n\nSign in to review it under Administration → Mailbox requests: '+appUrl
   });
   if(error)throw new Error(error.message||'Resend could not send the administrator notification');
   return true;
