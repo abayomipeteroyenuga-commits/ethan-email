@@ -76,9 +76,9 @@
     </section>
 
     <section id="mailboxView" class="content-view hidden">
-      <div class="settings-intro"><div class="eyebrow">ETHAN MAIL SERVICE</div><h2>Your professional email address</h2><p>Request your own email address ending in <strong>@ethandigitalacademy.org</strong>. Once approved, your inbox will be ready to use inside ETHAN EMAIL.</p></div>
+      <div class="settings-intro"><div class="eyebrow">ETHAN MAIL SERVICE</div><h2>Your professional email address</h2><p>Request your own email address ending in <strong>@ethandigitalacademy.org</strong>. A new address is assigned after administrator approval. Sending and receiving begin only after the mail domain and routing have been configured and tested.</p></div>
       <div class="settings-grid">
-        <article class="settings-card"><div class="card-icon">✉</div><h3>Request your mailbox</h3><p>Choose the professional address you would like to use. Our administrator will review your request.</p><form id="mailboxRequestForm"><label>Preferred address<input id="localPart" maxlength="50" required placeholder="e.g. abayomi.peter"><small class="hint">Your address will be <b id="addressPreview">name@ethandigitalacademy.org</b></small></label><button class="primary" type="submit">Request email address <span>→</span></button><p id="requestStatus" class="status-line"></p></form></article>
+        <article class="settings-card"><div class="card-icon">✉</div><h3>Request your mailbox</h3><p>Choose the professional address you would like to use. Your request is saved for administrator review. Email alerts are sent when administrator notification settings are available.</p><form id="mailboxRequestForm"><label>Preferred address<input id="localPart" maxlength="50" required placeholder="e.g. abayomi.peter"><small class="hint">Your address will be <b id="addressPreview">name@ethandigitalacademy.org</b></small></label><button class="primary" type="submit">Request email address <span>→</span></button><p id="requestStatus" class="status-line"></p></form></article>
         <article class="settings-card accent-card"><div class="card-icon">✓</div><h3>Mailbox status</h3><div class="domain-preview" id="mailboxCurrent">No active Ethan mailbox</div><p id="mailboxStatusText">Your mailbox status will appear here.</p><div class="secure-note"> <span>▣</span> Powered by Ethan's secure Resend mail service.</div></article>
       </div>
     </section>
@@ -96,7 +96,7 @@
     </section>
 
     <section id="adminView" class="content-view hidden">
-      <div class="settings-intro"><div class="eyebrow">ADMINISTRATION</div><h2>Mailbox requests</h2><p>Review address requests and activate approved Ethan mailboxes. Activation provisions the address through the Resend mail service.</p></div>
+      <div class="settings-intro"><div class="eyebrow">ADMINISTRATION</div><h2>Mailbox requests</h2><p>Review address requests and assign approved Ethan addresses. Assignment reserves the address; verify the Resend sending domain and incoming webhook before promising email delivery.</p></div>
       <div class="admin-list" id="adminRequests"><p>Loading requests…</p></div>
       <div class="settings-intro"><h2>Registered accounts</h2></div><div class="admin-list" id="adminUsers"></div><div class="settings-intro"><h2>Security and account activity</h2><p>Recent sign-ins, account changes and mailbox administration events.</p></div><div class="admin-list" id="adminAudit"><p>Loading security activity…</p></div>
     </section>
