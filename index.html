@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#102b55">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ethan Email">
+<link rel="apple-touch-icon" href="/icons/ethan-email-192.svg">
+<link rel="icon" type="image/svg+xml" href="/icons/ethan-email-192.svg">
 <meta name="description" content="ETHAN EMAIL — secure, professional email from Ethan Digital Academy.">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -99,6 +105,7 @@
 
 <div id="composeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="composeTitle"><div class="compose-window"><header><strong id="composeTitle">New message</strong><button class="icon-button" id="closeCompose" aria-label="Close compose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="text" required autocomplete="off" placeholder="name@example.com, another@example.com"></label><small class="recipient-help">Send to multiple people by separating email addresses with commas or semicolons. Up to 50 recipients.</small><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label><div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="submit" class="primary">Send message ↗</button></div></form></div></div>
 <div id="toast" class="toast" role="status"></div>
-<script src="/app.js" defer></script><script src="/auth-registration.js" defer></script>
+<div id="pwaInstallBar" class="pwa-install-bar hidden" role="region" aria-label="Install Ethan Email"><div class="pwa-install-copy"><img src="/icons/ethan-email-192.svg" alt="" width="38" height="38"><div><strong>Install Ethan Email</strong><span>Get quick access from your home screen.</span></div></div><button id="pwaInstallButton" class="primary" type="button">Install app</button><button id="pwaInstallDismiss" class="pwa-install-dismiss" type="button" aria-label="Dismiss install prompt">×</button></div>
+<script src="/app.js" defer></script><script src="/auth-registration.js" defer></script><script src="/install.js" defer></script>
 <script>document.getElementById('year').textContent=new Date().getFullYear();</script>
 </body></html>
