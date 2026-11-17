@@ -1,10 +1,17 @@
-# Ethan Kids — Ethan ID integration
+# Ethan Email
 
-This build replaces the previous separate Ethan Kids sign-in with the existing Ethan Hub Supabase project. Deploy the Hub and Kids folders to their respective GitHub/Vercel projects; do not merge the folders into one site.
+Ethan Email is the email application for Ethan Digital Academy.
 
-1. Deploy Ethan Kids to its own HTTPS address.
-2. In ETHAN-HUB/index.html set `kidsUrl:''` to the exact deployed Kids URL (e.g. `https://YOUR-KIDS-DOMAIN`), then deploy Hub. The Kids tile stays disabled until this is set.
-3. Confirm the `ethan-sso` Edge Function is deployed in the Ethan ID Supabase project and its `SSO_SECRET` is configured. Keep this secret server-side. Both apps must use the SAME Ethan ID project.
-4. Sign into Hub, click Ethan Kids, and test the handoff and sign-out. Kids progress remains local to each browser.
+## Production
+- Production URL: https://email.ethandigitalacademy.org
+- Runtime: Express on Vercel
+- Database: Neon Postgres
+- Mail transport: per-account SMTP/IMAP settings
 
-IMPORTANT SECURITY LIMITATIONS: The existing Hub SSO function returns bearer session credentials when a ticket is exchanged. Tickets are currently reusable for their 60-second lifetime and are passed in the URL; avoid treating this as a production-hardened child-safety/SSO solution until a server-side single-use handoff, strict allowed origins/targets and dedicated authorization rules are implemented. The Kids frontend checks a valid, confirmed Ethan ID, NOT an adult's identity or role. Do not claim adult-only enforcement; adult supervision and server-enforced authorization are needed before public launch. Static assets on public hosting cannot be secured by client-side route guards alone.
+## Account registration
+Users can register with any valid email address and a password of at least 10 characters. New accounts are approved automatically while public registration is open. An `@ethandigitalacademy.org` mailbox address is requested separately from the account sign-in email.
+
+## Deployment
+Vercel builds this repository from its root. Keep the Email homepage, Email client, API server and supporting assets together. The Ethan Kids website is maintained in its separate `Ethan-Kids` repository and Vercel project.
+
+Never commit environment secrets. Production requires `DATABASE_URL`, `SESSION_SECRET`, `MAIL_CREDENTIALS_KEY`, `REGISTRATION_MODE`, `EMAIL_DOMAIN`, and `BOOTSTRAP_ADMIN_EMAIL`. Password-reset delivery and Resend provisioning also require a valid `RESEND_API_KEY`.

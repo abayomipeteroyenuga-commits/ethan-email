@@ -1,1 +1,48 @@
-{"name":"Ethan Email","short_name":"Ethan Email","start_url":"./","display":"standalone","background_color":"#ffffff","theme_color":"#0759c7","icons":[{"src":"assets/ethan-email-logo.png","sizes":"512x512","type":"image/png","purpose":"any"}]}
+{
+  "id": "/",
+  "name": "Ethan Email — Ethan Digital Academy",
+  "short_name": "Ethan Email",
+  "description": "Your professional Ethan Digital Academy inbox.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "background_color": "#f5f7fb",
+  "theme_color": "#102b55",
+  "categories": [
+    "communication",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icons/ethan-email-192.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/ethan-email-512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Inbox",
+      "short_name": "Inbox",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/ethan-email-192.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}

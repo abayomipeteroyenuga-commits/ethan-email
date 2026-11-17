@@ -1,91 +1,69 @@
-const { Pool } = require('pg');
-
-if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for Ethan Email Phase 3');
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false }
-});
-
-async function initDb(){
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id BIGSERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      display_name TEXT NOT NULL DEFAULT '',
-      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS mailbox_settings (
-      user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-      from_name TEXT NOT NULL DEFAULT '',
-      from_address TEXT NOT NULL DEFAULT '',
-      smtp_host TEXT NOT NULL DEFAULT '',
-      smtp_port INTEGER NOT NULL DEFAULT 465,
-      smtp_secure BOOLEAN NOT NULL DEFAULT TRUE,
-      smtp_user TEXT NOT NULL DEFAULT '',
-      smtp_pass_enc TEXT NOT NULL DEFAULT '',
-      imap_host TEXT NOT NULL DEFAULT '',
-      imap_port INTEGER NOT NULL DEFAULT 993,
-      imap_secure BOOLEAN NOT NULL DEFAULT TRUE,
-      imap_user TEXT NOT NULL DEFAULT '',
-      imap_pass_enc TEXT NOT NULL DEFAULT '',
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS provisioned_mailboxes (
-      user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE SET NULL,
-      mailbox_id TEXT PRIMARY KEY,
-      mailbox_address TEXT UNIQUE NOT NULL,
-      provider TEXT NOT NULL DEFAULT 'spacemail',
-      status TEXT NOT NULL DEFAULT 'active',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS users_created_at_idx ON users(created_at DESC);
-    CREATE INDEX IF NOT EXISTS provisioned_mailboxes_address_idx ON provisioned_mailboxes(mailbox_address);
-  `);
+const {Pool}=require('pg');
+if(!process.env.DATABASE_URL)throw new Error('DATABASE_URL is required');
+const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DATABASE_SSL==='false'?false:{rejectUnauthorized:false},max:10,idleTimeoutMillis:30000,connectionTimeoutMillis:10000});
+async function initDb(){await pool.query(`
+CREATE TABLE IF NOT EXISTS users(id BIGSERIAL PRIMARY KEY,email TEXT UNIQUE NOT NULL,password_hash TEXT NOT NULL,display_name TEXT NOT NULL DEFAULT '',role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('user','admin')),account_status TEXT NOT NULL DEFAULT 'pending' CHECK(account_status IN ('pending','approved','rejected','suspended')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_email TEXT NOT NULL DEFAULT '';
+CREATE TABLE IF NOT EXISTS mailbox_settings(user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,from_name TEXT NOT NULL DEFAULT '',from_address TEXT NOT NULL DEFAULT '',smtp_host TEXT NOT NULL DEFAULT 'mail.spacemail.com',smtp_port INTEGER NOT NULL DEFAULT 465,smtp_secure BOOLEAN NOT NULL DEFAULT TRUE,smtp_user TEXT NOT NULL DEFAULT '',smtp_pass_enc TEXT NOT NULL DEFAULT '',imap_host TEXT NOT NULL DEFAULT 'mail.spacemail.com',imap_port INTEGER NOT NULL DEFAULT 993,imap_secure BOOLEAN NOT NULL DEFAULT TRUE,imap_user TEXT NOT NULL DEFAULT '',imap_pass_enc TEXT NOT NULL DEFAULT '',updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS provisioned_mailboxes(user_id BIGINT UNIQUE REFERENCES users(id) ON DELETE SET NULL,mailbox_id TEXT PRIMARY KEY,mailbox_address TEXT UNIQUE NOT NULL,provider TEXT NOT NULL DEFAULT 'spacemail',status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','active','suspended','closed')),created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS mailbox_requests(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,local_part TEXT NOT NULL,requested_address TEXT UNIQUE NOT NULL,status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','provisioned')),admin_note TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS contacts(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,name TEXT NOT NULL DEFAULT '',email TEXT NOT NULL,company TEXT NOT NULL DEFAULT '',notes TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),UNIQUE(user_id,email));
+CREATE TABLE IF NOT EXISTS email_drafts(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,recipient TEXT NOT NULL DEFAULT '',subject TEXT NOT NULL DEFAULT '',body TEXT NOT NULL DEFAULT '',updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS audit_events(id BIGSERIAL PRIMARY KEY,user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,event_type TEXT NOT NULL,details JSONB NOT NULL DEFAULT '{}'::jsonb,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS received_emails(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,provider_email_id TEXT NOT NULL,from_address TEXT NOT NULL DEFAULT '',to_addresses TEXT[] NOT NULL DEFAULT '{}',cc_addresses TEXT[] NOT NULL DEFAULT '{}',subject TEXT NOT NULL DEFAULT '',text_body TEXT NOT NULL DEFAULT '',html_body TEXT NOT NULL DEFAULT '',received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),is_read BOOLEAN NOT NULL DEFAULT FALSE,UNIQUE(user_id,provider_email_id));
+CREATE INDEX IF NOT EXISTS received_emails_user_idx ON received_emails(user_id,received_at DESC);
+CREATE TABLE IF NOT EXISTS user_login_sessions(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,session_id TEXT NOT NULL UNIQUE,user_agent TEXT NOT NULL DEFAULT '',ip_address TEXT NOT NULL DEFAULT '',created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),revoked_at TIMESTAMPTZ);
+CREATE INDEX IF NOT EXISTS login_sessions_user_idx ON user_login_sessions(user_id,last_seen_at DESC);
+CREATE TABLE IF NOT EXISTS password_reset_tokens(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,token_hash TEXT NOT NULL UNIQUE,expires_at TIMESTAMPTZ NOT NULL,used_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS password_reset_user_idx ON password_reset_tokens(user_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS sent_emails(id BIGSERIAL PRIMARY KEY,user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,from_address TEXT NOT NULL DEFAULT '',recipient TEXT NOT NULL,subject TEXT NOT NULL DEFAULT '',text_body TEXT NOT NULL DEFAULT '',provider_message_id TEXT NOT NULL DEFAULT '',sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
+CREATE INDEX IF NOT EXISTS sent_emails_user_idx ON sent_emails(user_id,sent_at DESC);
+CREATE INDEX IF NOT EXISTS mailbox_requests_user_idx ON mailbox_requests(user_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS contacts_user_idx ON contacts(user_id);
+CREATE INDEX IF NOT EXISTS drafts_user_idx ON email_drafts(user_id,updated_at DESC);
+CREATE INDEX IF NOT EXISTS audit_events_user_idx ON audit_events(user_id,created_at DESC);
+`);
+await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status TEXT NOT NULL DEFAULT 'approved'");
+await pool.query("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_account_status_check");
+await pool.query("ALTER TABLE users ADD CONSTRAINT users_account_status_check CHECK(account_status IN ('pending','approved','rejected','suspended'))");
+await pool.query("UPDATE users SET account_status='approved' WHERE role='admin'");
+await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret_enc TEXT NOT NULL DEFAULT \'\'');
+await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT FALSE');
 }
-
-async function getUserByEmail(email){
-  const r = await pool.query('SELECT id,email,password_hash,display_name,role,created_at FROM users WHERE email=$1 LIMIT 1',[email]);
-  return r.rows[0] || null;
-}
-async function getUserById(id){
-  const r = await pool.query('SELECT id,email,display_name,role,created_at FROM users WHERE id=$1 LIMIT 1',[id]);
-  return r.rows[0] || null;
-}
-async function createUser({email,passwordHash,displayName,role='user'}){
-  const r = await pool.query('INSERT INTO users(email,password_hash,display_name,role) VALUES($1,$2,$3,$4) RETURNING id,email,display_name,role,created_at',[email,passwordHash,displayName,role]);
-  return r.rows[0];
-}
-async function listUsers(limit=100){
-  const r = await pool.query('SELECT u.id,u.email,u.display_name,u.role,u.created_at,p.mailbox_id,p.mailbox_address,p.provider FROM users u LEFT JOIN provisioned_mailboxes p ON p.user_id=u.id ORDER BY u.created_at DESC LIMIT $1',[limit]);
-  return r.rows;
-}
-async function getMailboxSettings(userId){
-  const r = await pool.query('SELECT * FROM mailbox_settings WHERE user_id=$1 LIMIT 1',[userId]);
-  return r.rows[0] || null;
-}
-async function upsertMailboxSettings(userId, s){
-  const r = await pool.query(`
-    INSERT INTO mailbox_settings(user_id,from_name,from_address,smtp_host,smtp_port,smtp_secure,smtp_user,smtp_pass_enc,imap_host,imap_port,imap_secure,imap_user,imap_pass_enc,updated_at)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
-    ON CONFLICT(user_id) DO UPDATE SET
-      from_name=EXCLUDED.from_name,from_address=EXCLUDED.from_address,
-      smtp_host=EXCLUDED.smtp_host,smtp_port=EXCLUDED.smtp_port,smtp_secure=EXCLUDED.smtp_secure,smtp_user=EXCLUDED.smtp_user,
-      smtp_pass_enc=CASE WHEN EXCLUDED.smtp_pass_enc='' THEN mailbox_settings.smtp_pass_enc ELSE EXCLUDED.smtp_pass_enc END,
-      imap_host=EXCLUDED.imap_host,imap_port=EXCLUDED.imap_port,imap_secure=EXCLUDED.imap_secure,imap_user=EXCLUDED.imap_user,
-      imap_pass_enc=CASE WHEN EXCLUDED.imap_pass_enc='' THEN mailbox_settings.imap_pass_enc ELSE EXCLUDED.imap_pass_enc END,
-      updated_at=NOW()
-    RETURNING *`,[userId,s.fromName,s.fromAddress,s.smtpHost,s.smtpPort,s.smtpSecure,s.smtpUser,s.smtpPassEnc,s.imapHost,s.imapPort,s.imapSecure,s.imapUser,s.imapPassEnc]);
-  return r.rows[0];
-}
-
-async function saveProvisionedMailbox({userId,mailboxId,address,provider='spacemail',status='active'}){
-  const r=await pool.query(`INSERT INTO provisioned_mailboxes(user_id,mailbox_id,mailbox_address,provider,status) VALUES($1,$2,$3,$4,$5) ON CONFLICT(mailbox_id) DO UPDATE SET user_id=EXCLUDED.user_id,mailbox_address=EXCLUDED.mailbox_address,provider=EXCLUDED.provider,status=EXCLUDED.status,updated_at=NOW() RETURNING *`,[userId||null,mailboxId,address,provider,status]); return r.rows[0];
-}
-async function removeProvisionedMailbox(mailboxId){await pool.query('DELETE FROM provisioned_mailboxes WHERE mailbox_id=$1',[mailboxId]);}
-async function listProvisionedMailboxes(limit=200){const r=await pool.query('SELECT * FROM provisioned_mailboxes ORDER BY created_at DESC LIMIT $1',[limit]);return r.rows;}
-module.exports={pool,initDb,getUserByEmail,getUserById,createUser,listUsers,getMailboxSettings,upsertMailboxSettings,saveProvisionedMailbox,removeProvisionedMailbox,listProvisionedMailboxes};
+async function getTotpSettings(userId){const r=await pool.query('SELECT totp_secret_enc,totp_enabled FROM users WHERE id=$1',[userId]);return r.rows[0]||null}
+async function saveTotpSecret(userId,secretEnc){await pool.query('UPDATE users SET totp_secret_enc=$2,totp_enabled=FALSE,updated_at=NOW() WHERE id=$1',[userId,secretEnc])}
+async function enableTotp(userId){await pool.query('UPDATE users SET totp_enabled=TRUE,updated_at=NOW() WHERE id=$1',[userId])}
+async function disableTotp(userId){await pool.query("UPDATE users SET totp_enabled=FALSE,totp_secret_enc='',updated_at=NOW() WHERE id=$1",[userId])}
+async function createLoginSession({userId,sessionId,userAgent,ip}){await pool.query('INSERT INTO user_login_sessions(user_id,session_id,user_agent,ip_address) VALUES($1,$2,$3,$4) ON CONFLICT(session_id) DO UPDATE SET last_seen_at=NOW(),revoked_at=NULL',[userId,sessionId,String(userAgent||'').slice(0,500),String(ip||'').slice(0,100)])}
+async function listLoginSessions(userId,currentSessionId){const r=await pool.query('SELECT id,session_id,user_agent,ip_address,created_at,last_seen_at,(session_id=$2) AS current FROM user_login_sessions WHERE user_id=$1 AND revoked_at IS NULL ORDER BY last_seen_at DESC',[userId,currentSessionId]);return r.rows.map(({session_id,...x})=>x)}
+async function revokeLoginSession(userId,id){const r=await pool.query('UPDATE user_login_sessions SET revoked_at=NOW() WHERE user_id=$1 AND id=$2 AND revoked_at IS NULL RETURNING session_id',[userId,id]);if(r.rows[0])await pool.query('DELETE FROM user_sessions WHERE sid=$1',[r.rows[0].session_id]);return Boolean(r.rows[0])}
+async function revokeOtherLoginSessions(userId,currentSessionId){const r=await pool.query('UPDATE user_login_sessions SET revoked_at=NOW() WHERE user_id=$1 AND session_id<>$2 AND revoked_at IS NULL RETURNING session_id',[userId,currentSessionId]);for(const x of r.rows)await pool.query('DELETE FROM user_sessions WHERE sid=$1',[x.session_id]);return r.rowCount}
+async function revokeAllLoginSessions(userId){const r=await pool.query('UPDATE user_login_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL RETURNING session_id',[userId]);for(const x of r.rows)await pool.query('DELETE FROM user_sessions WHERE sid=$1',[x.session_id]);return r.rowCount}
+async function createPasswordResetToken(userId,tokenHash,expiresAt){await pool.query('DELETE FROM password_reset_tokens WHERE user_id=$1 OR expires_at<NOW() OR used_at IS NOT NULL',[userId]);await pool.query('INSERT INTO password_reset_tokens(user_id,token_hash,expires_at) VALUES($1,$2,$3)',[userId,tokenHash,expiresAt])}
+async function consumePasswordResetToken(tokenHash,passwordHash){const client=await pool.connect();try{await client.query('BEGIN');const r=await client.query('SELECT user_id FROM password_reset_tokens WHERE token_hash=$1 AND used_at IS NULL AND expires_at>NOW() FOR UPDATE',[tokenHash]);if(!r.rows[0]){await client.query('ROLLBACK');return null}const userId=r.rows[0].user_id;await client.query('UPDATE password_reset_tokens SET used_at=NOW() WHERE user_id=$1 AND used_at IS NULL',[userId]);await client.query('UPDATE users SET password_hash=$2,updated_at=NOW() WHERE id=$1',[userId,passwordHash]);await client.query("DELETE FROM user_sessions WHERE sess->>'userId'=$1",[String(userId)]);await client.query('COMMIT');return userId}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}
+async function deletePasswordResetTokens(userId){await pool.query('DELETE FROM password_reset_tokens WHERE user_id=$1',[userId])}
+async function getUserByEmail(email){const r=await pool.query('SELECT id,email,password_hash,display_name,role,account_status,recovery_email,created_at FROM users WHERE email=$1',[email]);return r.rows[0]||null}
+async function getUserById(id){const r=await pool.query('SELECT u.id,u.email,u.display_name,u.role,u.account_status,u.created_at,p.mailbox_address,p.provider AS mailbox_provider,COALESCE(p.status,mr.status) AS mailbox_status FROM users u LEFT JOIN provisioned_mailboxes p ON p.user_id=u.id LEFT JOIN LATERAL (SELECT status FROM mailbox_requests WHERE user_id=u.id ORDER BY created_at DESC LIMIT 1) mr ON true WHERE u.id=$1',[id]);return r.rows[0]||null}
+async function createUser({email,passwordHash,displayName,role='user',accountStatus='pending',recoveryEmail='',localPart=''}){const client=await pool.connect();try{await client.query('BEGIN');const r=await client.query('INSERT INTO users(email,password_hash,display_name,role,account_status,recovery_email) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,email,display_name,role,account_status,created_at',[email,passwordHash,displayName,role,accountStatus,recoveryEmail]);if(localPart)await client.query('INSERT INTO mailbox_requests(user_id,local_part,requested_address) VALUES($1,$2,$3)',[r.rows[0].id,localPart,email]);await client.query('COMMIT');return r.rows[0]}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}
+async function listUsers(limit=100){const r=await pool.query('SELECT u.id,u.email,u.display_name,u.role,u.account_status,u.created_at,p.mailbox_address,p.status AS mailbox_status FROM users u LEFT JOIN provisioned_mailboxes p ON p.user_id=u.id ORDER BY u.created_at DESC LIMIT $1',[limit]);return r.rows}
+async function setUserAccountStatus(id,status){const r=await pool.query('UPDATE users SET account_status=$2,updated_at=NOW() WHERE id=$1 RETURNING id,email,display_name,role,account_status',[id,status]);return r.rows[0]||null}
+async function getMailboxSettings(id){const r=await pool.query('SELECT * FROM mailbox_settings WHERE user_id=$1',[id]);return r.rows[0]||null}
+async function upsertMailboxSettings(id,s){const r=await pool.query(`INSERT INTO mailbox_settings(user_id,from_name,from_address,smtp_host,smtp_port,smtp_secure,smtp_user,smtp_pass_enc,imap_host,imap_port,imap_secure,imap_user,imap_pass_enc) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) ON CONFLICT(user_id) DO UPDATE SET from_name=EXCLUDED.from_name,from_address=EXCLUDED.from_address,smtp_host=EXCLUDED.smtp_host,smtp_port=EXCLUDED.smtp_port,smtp_secure=EXCLUDED.smtp_secure,smtp_user=EXCLUDED.smtp_user,smtp_pass_enc=CASE WHEN EXCLUDED.smtp_pass_enc='' THEN mailbox_settings.smtp_pass_enc ELSE EXCLUDED.smtp_pass_enc END,imap_host=EXCLUDED.imap_host,imap_port=EXCLUDED.imap_port,imap_secure=EXCLUDED.imap_secure,imap_user=EXCLUDED.imap_user,imap_pass_enc=CASE WHEN EXCLUDED.imap_pass_enc='' THEN mailbox_settings.imap_pass_enc ELSE EXCLUDED.imap_pass_enc END,updated_at=NOW() RETURNING *`,[id,s.fromName,s.fromAddress,s.smtpHost,s.smtpPort,s.smtpSecure,s.smtpUser,s.smtpPassEnc,s.imapHost,s.imapPort,s.imapSecure,s.imapUser,s.imapPassEnc]);return r.rows[0]}
+async function requestMailbox({userId,localPart,address}){const r=await pool.query('INSERT INTO mailbox_requests(user_id,local_part,requested_address) VALUES($1,$2,$3) RETURNING *',[userId,localPart,address]);return r.rows[0]}
+async function listMailboxRequests(limit=100){const r=await pool.query('SELECT r.*,u.email AS account_email,u.display_name FROM mailbox_requests r JOIN users u ON u.id=r.user_id ORDER BY r.created_at DESC LIMIT $1',[limit]);return r.rows}
+async function getMailboxRequest(id){const r=await pool.query('SELECT * FROM mailbox_requests WHERE id=$1',[id]);return r.rows[0]||null}
+async function activateMailbox({userId,address,passwordEnc,displayName}){const client=await pool.connect();try{await client.query('BEGIN');await client.query(`INSERT INTO mailbox_settings(user_id,from_name,from_address,smtp_host,smtp_port,smtp_secure,smtp_user,smtp_pass_enc,imap_host,imap_port,imap_secure,imap_user,imap_pass_enc) VALUES($1,$2,$3,'mail.spacemail.com',465,true,$3,$4,'mail.spacemail.com',993,true,$3,$4) ON CONFLICT(user_id) DO UPDATE SET from_name=EXCLUDED.from_name,from_address=EXCLUDED.from_address,smtp_host=EXCLUDED.smtp_host,smtp_port=465,smtp_secure=true,smtp_user=EXCLUDED.smtp_user,smtp_pass_enc=EXCLUDED.smtp_pass_enc,imap_host=EXCLUDED.imap_host,imap_port=993,imap_secure=true,imap_user=EXCLUDED.imap_user,imap_pass_enc=EXCLUDED.imap_pass_enc,updated_at=NOW()`,[userId,displayName||'Ethan Email',address,passwordEnc]);await client.query(`INSERT INTO provisioned_mailboxes(user_id,mailbox_id,mailbox_address,provider,status) VALUES($1,$2,$2,'spacemail','active') ON CONFLICT(mailbox_id) DO UPDATE SET user_id=EXCLUDED.user_id,status='active',updated_at=NOW()`,[userId,address]);await client.query("UPDATE mailbox_requests SET status='provisioned',updated_at=NOW() WHERE requested_address=$1",[address]);await client.query("INSERT INTO audit_events(user_id,event_type,details) VALUES($1,'mailbox.provisioned',jsonb_build_object('address',$2,'provider','spacemail'))",[userId,address]);await client.query('COMMIT')}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}
+async function listProvisionedMailboxes(limit=200){const r=await pool.query('SELECT p.*,u.email AS account_email FROM provisioned_mailboxes p LEFT JOIN users u ON u.id=p.user_id ORDER BY p.created_at DESC LIMIT $1',[limit]);return r.rows}
+async function activateResendMailbox({userId,address,displayName}){const client=await pool.connect();try{await client.query('BEGIN');await client.query("INSERT INTO provisioned_mailboxes(user_id,mailbox_id,mailbox_address,provider,status) VALUES($1,$2,$2,'resend','active') ON CONFLICT(mailbox_id) DO UPDATE SET user_id=EXCLUDED.user_id,provider='resend',status='active',updated_at=NOW()",[userId,address]);await client.query("UPDATE mailbox_requests SET status='provisioned',updated_at=NOW() WHERE requested_address=$1",[address]);await client.query("INSERT INTO audit_events(user_id,event_type,details) VALUES($1,'mailbox.provisioned',jsonb_build_object('address',$2::text,'provider','resend'))",[userId,address]);await client.query('COMMIT')}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}}
+async function findResendMailboxUsers(addresses){const r=await pool.query("SELECT user_id,mailbox_address FROM provisioned_mailboxes WHERE provider='resend' AND status='active' AND LOWER(mailbox_address)=ANY($1::text[])",[addresses.map(x=>String(x).toLowerCase())]);return r.rows}
+async function saveReceivedEmail({userId,providerEmailId,from,to,cc,subject,textBody,htmlBody,receivedAt}){const r=await pool.query(`INSERT INTO received_emails(user_id,provider_email_id,from_address,to_addresses,cc_addresses,subject,text_body,html_body,received_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,NOW())) ON CONFLICT(user_id,provider_email_id) DO NOTHING RETURNING id`,[userId,providerEmailId,from,to||[],cc||[],subject||'',textBody||'',htmlBody||'',receivedAt||null]);return r.rows[0]||null}
+async function listReceivedEmails(userId,limit=50){const r=await pool.query('SELECT id,from_address AS "fromAddress",from_address AS "from",subject,received_at AS date,is_read AS unread FROM received_emails WHERE user_id=$1 ORDER BY received_at DESC LIMIT $2',[userId,limit]);return r.rows.map(x=>({...x,unread:!x.unread}))}
+async function getReceivedEmail(userId,id){const r=await pool.query('SELECT id,from_address AS "fromAddress",from_address AS "from",to_addresses,cc_addresses,subject,text_body AS text,html_body AS html,received_at AS date,is_read FROM received_emails WHERE user_id=$1 AND id=$2',[userId,id]);if(!r.rows[0])return null;await pool.query('UPDATE received_emails SET is_read=TRUE WHERE user_id=$1 AND id=$2',[userId,id]);return r.rows[0]}
+async function saveSentEmail({userId,fromAddress,recipient,subject,textBody,providerMessageId}){const r=await pool.query('INSERT INTO sent_emails(user_id,from_address,recipient,subject,text_body,provider_message_id) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',[userId,fromAddress||'',recipient,subject||'',textBody||'',providerMessageId||'']);return r.rows[0]}
+async function listSentEmails(userId,limit=100){const r=await pool.query('SELECT id,from_address AS "fromAddress",recipient,subject,text_body AS text,sent_at AS date FROM sent_emails WHERE user_id=$1 ORDER BY sent_at DESC LIMIT $2',[userId,limit]);return r.rows}
+async function saveDraft({userId,id,recipient,subject,body}){if(id){const r=await pool.query('UPDATE email_drafts SET recipient=$3,subject=$4,body=$5,updated_at=NOW() WHERE id=$1 AND user_id=$2 RETURNING *',[id,userId,recipient,subject,body]);return r.rows[0]||null}const r=await pool.query('INSERT INTO email_drafts(user_id,recipient,subject,body) VALUES($1,$2,$3,$4) RETURNING *',[userId,recipient,subject,body]);return r.rows[0]}
+async function listDrafts(userId){const r=await pool.query('SELECT id,recipient,subject,body,updated_at FROM email_drafts WHERE user_id=$1 ORDER BY updated_at DESC',[userId]);return r.rows}
+async function deleteDraft(userId,id){await pool.query('DELETE FROM email_drafts WHERE id=$1 AND user_id=$2',[id,userId])}
+async function audit(userId,type,details={}){await pool.query('INSERT INTO audit_events(user_id,event_type,details) VALUES($1,$2,$3)',[userId,type,JSON.stringify(details)])}
+async function listSecurityAuditEvents(limit=100){const r=await pool.query("SELECT a.id,a.event_type,a.created_at,u.email,u.display_name FROM audit_events a LEFT JOIN users u ON u.id=a.user_id WHERE a.event_type LIKE 'account.%' OR a.event_type LIKE 'admin.%' OR a.event_type LIKE 'mailbox.%' ORDER BY a.created_at DESC LIMIT $1",[Math.min(Math.max(Number(limit)||100,1),200)]);return r.rows}
+module.exports={pool,initDb,getTotpSettings,saveTotpSecret,enableTotp,disableTotp,createLoginSession,listLoginSessions,revokeLoginSession,revokeOtherLoginSessions,revokeAllLoginSessions,createPasswordResetToken,consumePasswordResetToken,deletePasswordResetTokens,setUserAccountStatus,activateResendMailbox,findResendMailboxUsers,saveReceivedEmail,listReceivedEmails,getReceivedEmail,getUserByEmail,getUserById,createUser,listUsers,getMailboxSettings,upsertMailboxSettings,requestMailbox,listMailboxRequests,getMailboxRequest,activateMailbox,listProvisionedMailboxes,saveDraft,listDrafts,deleteDraft,saveSentEmail,listSentEmails,audit,listSecurityAuditEvents};
