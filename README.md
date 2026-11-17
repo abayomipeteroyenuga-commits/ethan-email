@@ -8,3 +8,8 @@ This build replaces the previous separate Ethan Kids sign-in with the existing E
 4. Sign into Hub, click Ethan Kids, and test the handoff and sign-out. Kids progress remains local to each browser.
 
 IMPORTANT SECURITY LIMITATIONS: The existing Hub SSO function returns bearer session credentials when a ticket is exchanged. Tickets are currently reusable for their 60-second lifetime and are passed in the URL; avoid treating this as a production-hardened child-safety/SSO solution until a server-side single-use handoff, strict allowed origins/targets and dedicated authorization rules are implemented. The Kids frontend checks a valid, confirmed Ethan ID, NOT an adult's identity or role. Do not claim adult-only enforcement; adult supervision and server-enforced authorization are needed before public launch. Static assets on public hosting cannot be secured by client-side route guards alone.
+
+
+## Ethan Email account registration
+
+Users may register with an existing email address from any provider (for example Gmail, Yahoo or Outlook). The supplied address is the sign-in identity; the account password is created in Ethan Email. New accounts remain pending administrator approval. An `@ethandigitalacademy.org` mailbox is a separate mailbox request after approval and is not created by external-email registration.
