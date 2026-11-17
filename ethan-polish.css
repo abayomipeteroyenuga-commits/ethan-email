@@ -179,3 +179,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+/* Installable app prompt */
+.pwa-install-bar{position:fixed;z-index:1000;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(560px,calc(100% - 28px));display:flex;align-items:center;gap:14px;padding:13px 15px;background:#fff;border:1px solid #dfe8f4;border-radius:17px;box-shadow:0 18px 55px rgba(10,35,70,.2)}
+.pwa-install-copy{display:flex;align-items:center;gap:11px;min-width:0;flex:1}.pwa-install-copy img{flex:none;border-radius:10px}.pwa-install-copy strong,.pwa-install-copy span{display:block}.pwa-install-copy strong{font:800 12px Manrope,sans-serif;color:#17345b}.pwa-install-copy span{font-size:10px;color:#75869e;margin-top:3px}.pwa-install-bar .primary{white-space:nowrap;padding:11px 15px}.pwa-install-dismiss{width:30px;height:30px;border:0;border-radius:9px;background:#f1f5fa;color:#63748b;font-size:20px;line-height:1}
+@media(max-width:480px){.pwa-install-bar{gap:8px;padding:10px}.pwa-install-copy{gap:8px}.pwa-install-copy span{max-width:150px;line-height:1.35}.pwa-install-bar .primary{padding:10px;font-size:11px}}
