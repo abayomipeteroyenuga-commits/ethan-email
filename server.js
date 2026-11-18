@@ -1,6 +1,6 @@
 require('dotenv').config();
 const path=require('path'),crypto=require('crypto'),express=require('express'),helmet=require('helmet'),rateLimit=require('express-rate-limit'),session=require('express-session'),bcrypt=require('bcryptjs'),pgSession=require('connect-pg-simple')(session);
-const {pool,initDb,getUserByEmail,getUserById,createUser,listUsers,setUserAccountStatus,getMailboxSettings,upsertMailboxSettings,requestMailbox,listMailboxRequests,getMailboxRequest,activateMailbox,activateResendMailbox,findResendMailboxUsers,saveReceivedEmail,listReceivedEmails,getReceivedEmail,listProvisionedMailboxes,saveDraft,listDrafts,deleteDraft,saveSentEmail,listSentEmails,createPasswordResetToken,consumePasswordResetToken,deletePasswordResetTokens,listSecurityAuditEvents,getTotpSettings,saveTotpSecret,enableTotp,disableTotp,createLoginSession,listLoginSessions,revokeLoginSession,revokeOtherLoginSessions,revokeAllLoginSessions,audit}=require('./db');
+const {pool,initDb,getUserByEmail,getUserById,createUser,listUsers,listMailRecipients,setUserAccountStatus,getMailboxSettings,upsertMailboxSettings,requestMailbox,listMailboxRequests,getMailboxRequest,activateMailbox,activateResendMailbox,findResendMailboxUsers,saveReceivedEmail,listReceivedEmails,getReceivedEmail,listProvisionedMailboxes,saveDraft,listDrafts,deleteDraft,saveSentEmail,listSentEmails,createPasswordResetToken,consumePasswordResetToken,deletePasswordResetTokens,listSecurityAuditEvents,getTotpSettings,saveTotpSecret,enableTotp,disableTotp,createLoginSession,listLoginSessions,revokeLoginSession,revokeOtherLoginSessions,revokeAllLoginSessions,audit}=require('./db');
 const {encrypt,decrypt}=require('./lib/crypto');
 const {Resend}=require('resend');
 const QRCode=require('qrcode');
@@ -102,11 +102,12 @@ app.get('/api/mail/diagnostics',requireAuth,async(req,res)=>{
     res.set('Cache-Control','no-store').json({accountStatus:u.account_status,provider,mailboxAddress:u.mailbox_address||c?.fromAddress||null,mailboxStatus:u.mailbox_status||'not-provisioned',providerKeyConfigured:isResend?Boolean(process.env.RESEND_API_KEY):null,readyToSend,message});
   }catch(e){res.status(500).json({error:'Could not check your email sending configuration.'})}
 });
+app.get('/api/mail/recipients',requireAuth,async(req,res)=>{try{const recipients=await listMailRecipients(req.session.userId);res.set('Cache-Control','no-store').json({recipients})}catch(e){console.error('Recipient directory failed:',e.message);res.status(500).json({error:'Could not load Ethan recipients.'})}});
 app.post('/api/mail/send',requireAuth,mailLimit,async(req,res)=>{
   const rawTo=Array.isArray(req.body.to)?req.body.to.join(','):String(req.body.to||'');
   const recipients=[...new Set(rawTo.split(/[;,\r\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
   const to=recipients.join(', '),subject=String(req.body.subject||'').slice(0,300),text=String(req.body.text||'').slice(0,100000);
-  if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter valid recipient email addresses, separated by commas or semicolons (maximum 50).'});
+  if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter one valid email address, or separate multiple addresses with commas or semicolons (up to 50).'});
   const u=req.currentUser,isResend=u.mailbox_provider==='resend',provider=isResend?'Resend':'SMTP';
   try{
     let result;
