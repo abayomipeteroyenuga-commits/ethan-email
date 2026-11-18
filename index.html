@@ -51,8 +51,11 @@
     <div class="nav-caption">MAILBOX</div>
     <nav class="folders">
       <button class="folder active" data-folder="inbox"><span class="nav-icon">▣</span> Inbox <b id="inboxCount"></b></button>
+      <button class="folder" data-folder="starred"><span class="nav-icon">☆</span> Starred</button>
+      <button class="folder" data-folder="archive"><span class="nav-icon">▣</span> Archive</button>
       <button class="folder" data-folder="drafts"><span class="nav-icon">▤</span> Drafts</button>
       <button class="folder" data-folder="sent"><span class="nav-icon">↗</span> Sent</button>
+      <button class="folder" data-folder="trash"><span class="nav-icon">▤</span> Trash</button>
     </nav>
     <div class="nav-caption secondary-caption">YOUR ACCOUNT</div>
     <div class="sidebar-bottom">
@@ -71,7 +74,7 @@
     </header>
 
     <section id="mailView" class="mail-layout">
-      <div class="mail-toolbar"><div><input type="checkbox" id="selectAll" aria-label="Select all messages"><button class="icon-button" id="refreshList" title="Refresh">↻</button></div><span id="mailCount">Your messages will appear here</span><span class="toolbar-label">ETHAN MAIL</span></div>
+      <div class="mail-toolbar"><div><button class="icon-button" id="refreshList" title="Refresh messages" aria-label="Refresh messages">↻</button><label class="filter-label" for="messageFilter">Show</label><select id="messageFilter" aria-label="Filter messages"><option value="all">All messages</option><option value="unread">Unread only</option></select></div><span id="mailCount">Your messages will appear here</span><span class="toolbar-label">ETHAN MAIL</span></div>
       <div id="messageList" class="message-list"><div class="empty-state"><div class="empty-icon">✉</div><h2>Your inbox starts here</h2><p>Your messages will appear here once your Ethan mailbox is activated.</p><button class="primary" data-view="mailbox">Get an Ethan address</button></div></div>
     </section>
 
