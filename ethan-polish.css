@@ -184,3 +184,44 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .pwa-install-bar{position:fixed;z-index:1000;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(560px,calc(100% - 28px));display:flex;align-items:center;gap:14px;padding:13px 15px;background:#fff;border:1px solid #dfe8f4;border-radius:17px;box-shadow:0 18px 55px rgba(10,35,70,.2)}
 .pwa-install-copy{display:flex;align-items:center;gap:11px;min-width:0;flex:1}.pwa-install-copy img{flex:none;border-radius:10px}.pwa-install-copy strong,.pwa-install-copy span{display:block}.pwa-install-copy strong{font:800 12px Manrope,sans-serif;color:#17345b}.pwa-install-copy span{font-size:10px;color:#75869e;margin-top:3px}.pwa-install-bar .primary{white-space:nowrap;padding:11px 15px}.pwa-install-dismiss{width:30px;height:30px;border:0;border-radius:9px;background:#f1f5fa;color:#63748b;font-size:20px;line-height:1}
 @media(max-width:480px){.pwa-install-bar{gap:8px;padding:10px}.pwa-install-copy{gap:8px}.pwa-install-copy span{max-width:150px;line-height:1.35}.pwa-install-bar .primary{padding:10px;font-size:11px}}
+
+
+/* Ethan Email productivity upgrade: message actions and inbox filters */
+.mail-toolbar select{
+  border:1px solid #dfe7f2;background:#f8fbff;color:#34516f;
+  border-radius:9px;padding:8px 10px;font:600 11px 'DM Sans',sans-serif;
+  outline:none;cursor:pointer
+}
+.mail-toolbar select:focus{border-color:#7eafe5;box-shadow:0 0 0 3px rgba(40,120,220,.09)}
+.filter-label{font-size:10px;font-weight:700;color:#8291a6;margin-left:2px}
+.message-row{
+  display:grid;grid-template-columns:minmax(0,1fr) 92px auto;gap:12px;
+  align-items:center;padding:15px 19px
+}
+.message-open{
+  min-width:0;width:100%;display:grid;grid-template-columns:minmax(140px,220px) minmax(0,1fr);
+  align-items:center;gap:14px;border:0;padding:0;background:transparent;text-align:left;
+  color:#5e6e85;font:inherit
+}
+.message-open .sender,.message-open .subject{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.message-row.unread .message-open{color:#233b5b;font-weight:800}
+.message-row-actions{display:flex;align-items:center;gap:4px}
+.message-action{
+  width:29px;height:29px;display:grid;place-items:center;border:0;border-radius:8px;
+  background:transparent;color:#8392a6;font-size:16px;line-height:1;padding:0
+}
+.message-action:hover{background:#edf4ff;color:#2369c8}
+.message-action.star-action{font-size:19px}
+.message-action.star-action.selected{color:#e0a32b}
+.message-row-actions button:focus-visible{outline:3px solid rgba(48,126,218,.28);outline-offset:2px}
+@media(max-width:650px){
+  .mail-toolbar{gap:8px}
+  .mail-toolbar>div{gap:7px}
+  .filter-label{display:none}
+  .mail-toolbar select{max-width:116px;padding:7px 8px}
+  .message-row{grid-template-columns:minmax(0,1fr) auto;gap:6px;padding:12px 10px}
+  .message-open{grid-template-columns:minmax(78px,.8fr) minmax(0,1.5fr);gap:8px}
+  .message-row time{display:none}
+  .message-row-actions{gap:1px}
+  .message-action{width:26px;height:28px;font-size:15px}
+}
