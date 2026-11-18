@@ -104,7 +104,7 @@ app.get('/api/mail/diagnostics',requireAuth,async(req,res)=>{
 });
 app.post('/api/mail/send',requireAuth,mailLimit,async(req,res)=>{
   const rawTo=Array.isArray(req.body.to)?req.body.to.join(','):String(req.body.to||'');
-  const recipients=[...new Set(rawTo.split(/[;,\\r\\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
+  const recipients=[...new Set(rawTo.split(/[;,\r\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
   const to=recipients.join(', '),subject=String(req.body.subject||'').slice(0,300),text=String(req.body.text||'').slice(0,100000);
   if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter valid recipient email addresses, separated by commas or semicolons (maximum 50).'});
   const u=req.currentUser,isResend=u.mailbox_provider==='resend',provider=isResend?'Resend':'SMTP';
