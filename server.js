@@ -89,7 +89,60 @@ app.put('/api/settings/mailbox',requireAuth,async(req,res)=>{const b=req.body||{
 app.get('/api/status/verify',requireAuth,async(req,res)=>{try{const c=await mailboxFor(req.session.userId);if(!c)return res.status(400).json({error:'Connect a mailbox first'});res.json(await verifyServices(c))}catch(e){res.status(400).json({error:'Could not test the mail connection'})}});
 app.get('/api/mail/inbox',requireAuth,mailLimit,async(req,res)=>{try{const u=await getUserById(req.session.userId);if(u?.mailbox_provider==='resend')return res.json({messages:await listReceivedEmails(req.session.userId,Math.min(Number(req.query.limit)||50,100))});const c=await mailboxFor(req.session.userId);if(!imapConfigured(c))return res.status(400).json({error:'Your mailbox is not active yet. Request an Ethan address or connect an existing mailbox in Settings.'});res.json({messages:await listInbox(c,Math.min(Number(req.query.limit)||50,100))})}catch(e){res.status(502).json({error:'Could not load inbox. Check your mailbox connection.'})}});
 app.get('/api/mail/inbox/:uid',requireAuth,mailLimit,async(req,res)=>{const uid=Number(req.params.uid);if(!Number.isSafeInteger(uid)||uid<1)return res.status(400).json({error:'Invalid message reference'});try{const u=await getUserById(req.session.userId);if(u?.mailbox_provider==='resend'){const msg=await getReceivedEmail(req.session.userId,uid);if(!msg)return res.status(404).json({error:'Message not found'});return res.json(msg)}const c=await mailboxFor(req.session.userId),msg=await readMessage(c,uid);if(!msg)return res.status(404).json({error:'Message not found'});res.json(msg)}catch(e){res.status(502).json({error:'Could not open this message'})}});
-app.post('/api/mail/send',requireAuth,mailLimit,async(req,res)=>{const rawTo=Array.isArray(req.body.to)?req.body.to.join(','):String(req.body.to||''),recipients=[...new Set(rawTo.split(/[;,\\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))],to=recipients.join(', '),subject=String(req.body.subject||'').slice(0,300),text=String(req.body.text||'').slice(0,100000);if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter valid recipient email addresses, separated by commas or semicolons (maximum 50).'});try{const u=await getUserById(req.session.userId);let result;if(u?.mailbox_provider==='resend'&&u.mailbox_address){const {data,error}=await resend().emails.send({from:(u.display_name||'Ethan Email')+' <'+u.mailbox_address+'>',to:recipients,subject:subject||'(no subject)',text:text||''});if(error)throw new Error(error.message||'Resend send failed');result={messageId:data?.id,accepted:recipients,rejected:[]}}else{const c=await mailboxFor(req.session.userId);if(!smtpConfigured(c))return res.status(400).json({error:'Activate your Ethan mailbox or connect an SMTP mailbox first'});result=await sendMail(c,{to:recipients,subject,text})}await saveSentEmail({userId:req.session.userId,fromAddress:u?.mailbox_address||u?.email||'',recipient:to,subject,textBody:text,providerMessageId:result.messageId||''});await audit(req.session.userId,'mail.sent',{to:recipients,subject});res.json({ok:true,result})}catch(e){console.error('Mail send failed:',e.message);res.status(502).json({error:'Message could not be sent. Check your mailbox connection.'})}});
+app.get('/api/mail/diagnostics',requireAuth,async(req,res)=>{
+  try{
+    const u=req.currentUser,c=await mailboxFor(u.id),isResend=u.mailbox_provider==='resend';
+    const provider=isResend?'Resend':smtpConfigured(c)?'SMTP':'none';
+    const readyToSend=isResend?Boolean(u.mailbox_status==='active'&&u.mailbox_address&&process.env.RESEND_API_KEY):smtpConfigured(c);
+    let message='Your account and sending configuration are ready for a test message.';
+    if(isResend&&!u.mailbox_address)message='No Ethan sending address is assigned to this account.';
+    else if(isResend&&u.mailbox_status!=='active')message='Your Ethan sending address is not active. Contact the administrator.';
+    else if(isResend&&!process.env.RESEND_API_KEY)message='The Resend API key is missing from production. Contact the administrator.';
+    else if(!readyToSend)message='No complete SMTP mailbox connection is configured.';
+    res.set('Cache-Control','no-store').json({accountStatus:u.account_status,provider,mailboxAddress:u.mailbox_address||c?.fromAddress||null,mailboxStatus:u.mailbox_status||'not-provisioned',providerKeyConfigured:isResend?Boolean(process.env.RESEND_API_KEY):null,readyToSend,message});
+  }catch(e){res.status(500).json({error:'Could not check your email sending configuration.'})}
+});
+app.post('/api/mail/send',requireAuth,mailLimit,async(req,res)=>{
+  const rawTo=Array.isArray(req.body.to)?req.body.to.join(','):String(req.body.to||'');
+  const recipients=[...new Set(rawTo.split(/[;,\\r\\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
+  const to=recipients.join(', '),subject=String(req.body.subject||'').slice(0,300),text=String(req.body.text||'').slice(0,100000);
+  if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter valid recipient email addresses, separated by commas or semicolons (maximum 50).'});
+  const u=req.currentUser,isResend=u.mailbox_provider==='resend',provider=isResend?'Resend':'SMTP';
+  try{
+    let result;
+    if(isResend){
+      if(!u.mailbox_address||u.mailbox_status!=='active')return res.status(409).json({error:'Your Ethan mailbox is not fully active. Contact the administrator.'});
+      if(!process.env.RESEND_API_KEY)return res.status(503).json({error:'The Resend API key is not configured. Contact the administrator.'});
+      const fromName=String(u.display_name||'Ethan Email').replaceAll('<',' ').replaceAll('>',' ').replaceAll(String.fromCharCode(10),' ').replaceAll(String.fromCharCode(13),' ').trim().slice(0,100)||'Ethan Email';
+      const {data,error}=await resend().emails.send({from:fromName+' <'+u.mailbox_address+'>',to:recipients,subject:subject||'(no subject)',text:text||''});
+      if(error){const x=new Error(error.message||'Resend send failed');x.code=error.name||error.code||'RESEND_ERROR';x.statusCode=error.statusCode||error.status;throw x}
+      result={messageId:data?.id,accepted:recipients,rejected:[],provider:'Resend'};
+    }else{
+      const c=await mailboxFor(u.id);
+      if(!smtpConfigured(c))return res.status(409).json({error:'Activate your Ethan mailbox or connect an SMTP mailbox first.'});
+      result=await sendMail(c,{to:recipients,subject,text});
+      result.provider='SMTP';
+    }
+    let savedToSentFolder=true;
+    try{await saveSentEmail({userId:u.id,fromAddress:u.mailbox_address||u.email,recipient:to,subject,textBody:text,providerMessageId:result.messageId||''})}
+    catch(saveError){savedToSentFolder=false;console.error('Email accepted by provider but Sent-folder save failed',{userId:u.id,message:saveError.message})}
+    try{await audit(u.id,'mail.sent',{to:recipients,subject,provider,messageId:result.messageId||'',savedToSentFolder})}
+    catch(auditError){console.error('Mail sent audit write failed:',auditError.message)}
+    return res.json({ok:true,result,savedToSentFolder,message:savedToSentFolder?'Message accepted by your email provider.':'Message accepted by your email provider, but the Sent folder could not be updated. Do not resend it.'});
+  }catch(e){
+    const code=String(e.code||e.name||'provider_error').slice(0,80),statusCode=Number(e.statusCode||e.status||0)||null;
+    const detail=String(e.message||'Unknown provider error').replaceAll(String.fromCharCode(10),' ').replaceAll(String.fromCharCode(13),' ').slice(0,260);
+    console.error('Ethan Email send failed',{userId:u.id,provider,code,statusCode,message:detail});
+    try{await audit(u.id,'mail.send_failed',{provider,code,statusCode})}catch{}
+    let message=provider+' could not send this message. Provider detail: '+detail;
+    if(provider==='Resend'&&(statusCode===401||/invalid.*api.?key|unauthorized/i.test(detail)))message='Resend rejected the production API key. Please contact the administrator.';
+    else if(provider==='Resend'&&(statusCode===403||/domain.*(not verified|unverified|not allowed)|sender.*not allowed/i.test(detail)))message='Resend rejected the sender domain or address. The administrator must verify the Ethan sending domain. Provider detail: '+detail;
+    else if(statusCode===429)message='The email provider rate limit has been reached. Please wait and try again.';
+    else if(provider==='SMTP'&&String(e.code||'').toLowerCase()==='eauth')message='The SMTP server rejected the mailbox username or password. Check the mailbox credentials.';
+    else if(provider==='SMTP'&&['ECONNECTION','ETIMEDOUT','EHOSTUNREACH','ENOTFOUND'].includes(String(e.code||'').toUpperCase()))message='Ethan Email could not connect to the SMTP server. Check its host, port and availability.';
+    return res.status(502).json({error:message});
+  }
+});
 app.get('/api/mail/sent',requireAuth,async(req,res)=>res.json({messages:await listSentEmails(req.session.userId,Math.min(Number(req.query.limit)||100,200))}));
 app.get('/api/drafts',requireAuth,async(req,res)=>res.json({drafts:await listDrafts(req.session.userId)}));
 app.post('/api/drafts',requireAuth,async(req,res)=>{const b=req.body||{};const d=await saveDraft({userId:req.session.userId,id:b.id?Number(b.id):null,recipient:String(b.recipient||'').slice(0,254),subject:String(b.subject||'').slice(0,300),body:String(b.body||'').slice(0,100000)});res.json({draft:d})});
