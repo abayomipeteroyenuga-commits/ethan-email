@@ -225,3 +225,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
   .message-row-actions{gap:1px}
   .message-action{width:26px;height:28px;font-size:15px}
 }
+
+
+/* Ethan Email: scheduled mail, snooze and private attachments */
+.compose-window input[type="file"]{padding:10px;background:#f8faff;border:1px dashed #cad7e8}
+.compose-help{display:block;margin:-4px 0 12px;color:#7a899d;font-size:10px;line-height:1.5}
+.attachment-list{display:grid;gap:7px;margin:8px 0 12px}
+.attachment-chip{display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #e6edf6;border-radius:10px;background:#f8fbff;color:#405775;font-size:11px}
+.attachment-chip span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attachment-chip small{margin-left:auto;color:#8795a8;white-space:nowrap}
+.attachment-chip button{border:0;border-radius:7px;background:#edf2f8;color:#73839a;padding:5px 8px}
+.signature-box{white-space:pre-wrap;border-top:1px solid #e8edf4;margin-top:16px;padding-top:12px;color:#64758d}
+#emailSignature{width:100%;margin:9px 0 14px;padding:12px 13px;border:1px solid #dfe6f0;border-radius:11px;background:#fbfcfe;color:#172b49;font:12px/1.6 'DM Sans',sans-serif;resize:vertical}
+#emailSignature:focus{outline:0;border-color:#77a8e4;box-shadow:0 0 0 4px #eaf3ff;background:#fff}
+.message-attachments{display:grid;gap:8px;margin:16px 0}
+.message-attachments a{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;background:#f5f8fd;border:1px solid #e6edf6;border-radius:10px;color:#2b5f9c;text-decoration:none;font-size:11px}
+.message-attachments a:hover{background:#edf4ff}
+.message-attachments small{color:#8290a4}
+@media(max-width:650px){.compose-window form{max-height:calc(100vh - 90px);overflow-y:auto}.compose-help{font-size:9px}.attachment-chip{flex-wrap:wrap}.attachment-chip small{margin-left:0}}
