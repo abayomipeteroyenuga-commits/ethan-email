@@ -53,6 +53,8 @@
       <button class="folder active" data-folder="inbox"><span class="nav-icon">▣</span> Inbox <b id="inboxCount"></b></button>
       <button class="folder" data-folder="starred"><span class="nav-icon">☆</span> Starred</button>
       <button class="folder" data-folder="archive"><span class="nav-icon">▣</span> Archive</button>
+      <button class="folder" data-folder="snoozed"><span class="nav-icon">◷</span> Snoozed</button>
+      <button class="folder" data-folder="scheduled"><span class="nav-icon">◴</span> Scheduled</button>
       <button class="folder" data-folder="drafts"><span class="nav-icon">▤</span> Drafts</button>
       <button class="folder" data-folder="sent"><span class="nav-icon">↗</span> Sent</button>
       <button class="folder" data-folder="trash"><span class="nav-icon">▤</span> Trash</button>
@@ -89,6 +91,13 @@
     <section id="settingsView" class="content-view hidden">
       <div class="settings-intro"><div class="eyebrow">PREFERENCES</div><h2>Account settings</h2><p>Manage your Ethan Email account. Your sign-in credentials are separate from your email mailbox.</p></div>
       <article class="settings-card settings-wide account-settings"><div class="account-setting-row"><div class="setting-symbol">👤</div><div><strong>Account profile</strong><p>Your registered name and email are used to identify your Ethan Email account.</p></div></div><div class="account-setting-row"><div class="setting-symbol">🔐</div><div><strong>Account security</strong><p>Keep your password private. Ethan Email will never ask you to share it with an administrator.</p></div></div><div class="account-setting-row"><div class="setting-symbol">✉</div><div><strong>Email service</strong><p>Your approved Ethan address is hosted through Ethan's Resend-powered mail service.</p></div></div></article>
+      <article class="settings-card settings-wide" id="emailSignatureSettings">
+        <h3>Default email signature</h3>
+        <p>Your signature is added to new messages automatically. You can edit it before sending each email.</p>
+        <label for="emailSignature">Signature<textarea id="emailSignature" rows="5" maxlength="10000" placeholder="Your name&#10;Ethan Digital Academy"></textarea></label>
+        <button class="primary" id="saveEmailSignature" type="button">Save signature</button>
+        <p id="emailSignatureStatus" class="status-line" aria-live="polite"></p>
+      </article>
       <article class="settings-card settings-wide" id="mailSendDiagnostics">
         <h3>Outgoing email test</h3>
         <p>Check your Ethan sending setup by sending a test message to your own sign-in email address. No test email is sent until you press the button.</p>
@@ -113,7 +122,12 @@
   </main>
 </div>
 
-<div id="composeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="composeTitle"><div class="compose-window"><header><strong id="composeTitle">New message</strong><button class="icon-button" id="closeCompose" aria-label="Close compose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="text" required autocomplete="off" list="recipientSuggestions" placeholder="Enter one email address or choose an Ethan user"><datalist id="recipientSuggestions"></datalist></label><small class="recipient-help">Send to one person by entering a single email address. Start typing to find active Ethan users, or add more addresses separated by commas if needed.</small><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label><div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="submit" class="primary">Send message ↗</button></div></form></div></div>
+<div id="composeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="composeTitle"><div class="compose-window"><header><strong id="composeTitle">New message</strong><button class="icon-button" id="closeCompose" aria-label="Close compose">×</button></header><form id="composeForm"><label>To<input id="composeTo" type="text" required autocomplete="off" list="recipientSuggestions" placeholder="Enter one email address or choose an Ethan user"><datalist id="recipientSuggestions"></datalist></label><small class="recipient-help">Send to one person by entering a single email address. Start typing to find active Ethan users, or add more addresses separated by commas if needed.</small><label>Subject<input id="composeSubject" placeholder="Add a subject"></label><label>Message<textarea id="composeBody" rows="10" placeholder="Write your message…"></textarea></label>
+<label>Attachments<input id="composeFiles" type="file" multiple></label>
+<div id="attachmentList" class="attachment-list" aria-live="polite"></div>
+<small class="compose-help">Private attachments: up to 2.5 MB per file and 10 files per message. Scheduled sending requires an active Ethan-hosted mailbox and does not support attachments.</small>
+<label>Send later<input id="scheduleAt" type="datetime-local"></label>
+<div class="compose-footer"><span id="composeStatus"></span><button type="button" class="secondary" id="saveDraft">Save draft</button><button type="button" class="secondary" id="sendLaterButton">Schedule send</button><button type="submit" class="primary">Send now ↗</button></div></form></div></div>
 <div id="toast" class="toast" role="status"></div>
 <div id="pwaInstallBar" class="pwa-install-bar hidden" role="region" aria-label="Install Ethan Email"><div class="pwa-install-copy"><img src="/icons/ethan-email-192.svg" alt="" width="38" height="38"><div><strong>Install Ethan Email</strong><span>Get quick access from your home screen.</span></div></div><button id="pwaInstallButton" class="primary" type="button">Install app</button><button id="pwaInstallDismiss" class="pwa-install-dismiss" type="button" aria-label="Dismiss install prompt">×</button></div>
 <script src="/app.js" defer></script><script src="/install.js" defer></script>
