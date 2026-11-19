@@ -1,8 +1,9 @@
 require('dotenv').config();
 const path=require('path'),crypto=require('crypto'),express=require('express'),helmet=require('helmet'),rateLimit=require('express-rate-limit'),session=require('express-session'),bcrypt=require('bcryptjs'),pgSession=require('connect-pg-simple')(session);
-const {pool,initDb,getUserByEmail,getUserById,createUser,listUsers,listMailRecipients,setUserAccountStatus,getMailboxSettings,upsertMailboxSettings,requestMailbox,listMailboxRequests,getMailboxRequest,activateMailbox,activateResendMailbox,findResendMailboxUsers,saveReceivedEmail,listReceivedEmails,getReceivedEmail,updateReceivedEmailState,listProvisionedMailboxes,saveDraft,listDrafts,deleteDraft,saveSentEmail,listSentEmails,createPasswordResetToken,consumePasswordResetToken,deletePasswordResetTokens,listSecurityAuditEvents,getTotpSettings,saveTotpSecret,enableTotp,disableTotp,createLoginSession,listLoginSessions,revokeLoginSession,revokeOtherLoginSessions,revokeAllLoginSessions,audit}=require('./db');
+const {pool,initDb,getUserByEmail,getUserById,createUser,listUsers,listMailRecipients,setUserAccountStatus,getMailboxSettings,upsertMailboxSettings,requestMailbox,listMailboxRequests,getMailboxRequest,activateMailbox,activateResendMailbox,findResendMailboxUsers,saveReceivedEmail,listReceivedEmails,getReceivedEmail,updateReceivedEmailState,listProvisionedMailboxes,saveDraft,listDrafts,deleteDraft,saveSentEmail,listSentEmails,createPasswordResetToken,consumePasswordResetToken,deletePasswordResetTokens,listSecurityAuditEvents,getTotpSettings,saveTotpSecret,enableTotp,disableTotp,createLoginSession,listLoginSessions,revokeLoginSession,revokeOtherLoginSessions,revokeAllLoginSessions,getMailPreferences,updateMailSignature,createEmailAttachment,getPendingEmailAttachments,attachEmailAttachments,getEmailAttachment,deletePendingEmailAttachment,saveScheduledEmail,listScheduledEmails,getScheduledEmail,cancelScheduledEmailRecord,audit}=require('./db');
 const {encrypt,decrypt}=require('./lib/crypto');
 const {Resend}=require('resend');
+const {Readable}=require('node:stream');
 const QRCode=require('qrcode');
 const resend=()=>{if(!process.env.RESEND_API_KEY)throw new Error('Resend is not configured');return new Resend(process.env.RESEND_API_KEY)};
 const {verifyServices,sendMail,listInbox,readMessage,smtpConfigured,imapConfigured}=require('./lib/mailbox');
@@ -11,7 +12,7 @@ if(!process.env.MAIL_CREDENTIALS_KEY)throw new Error('MAIL_CREDENTIALS_KEY is re
 const app=express(),PORT=Number(process.env.PORT||3000);
 app.set('trust proxy',process.env.TRUST_PROXY==='1'?1:false);
 app.use(helmet({contentSecurityPolicy:{directives:{defaultSrc:["'self'"],styleSrc:["'self'","'unsafe-inline'","https://fonts.googleapis.com"],fontSrc:["'self'","https://fonts.gstatic.com"],imgSrc:["'self'","data:"],scriptSrc:["'self'"],connectSrc:["'self'"]}}}));
-app.use(express.json({limit:'1mb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}));app.use(express.urlencoded({extended:false}));
+app.use(express.json({limit:'4mb',verify:(req,res,buf)=>{req.rawBody=Buffer.from(buf)}}));app.use(express.urlencoded({extended:false}));
 app.use(session({store:new pgSession({pool,tableName:'user_sessions',createTableIfMissing:true}),name:process.env.NODE_ENV==='production'?'__Host-ethan.sid':'ethan.sid',secret:process.env.SESSION_SECRET,resave:false,saveUninitialized:false,rolling:true,cookie:{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production',path:'/',maxAge:4*60*60*1000}}));
 const authLimit=rateLimit({windowMs:15*60*1000,limit:8,standardHeaders:'draft-7',legacyHeaders:false}),resetLimit=rateLimit({windowMs:60*60*1000,limit:3,standardHeaders:'draft-7',legacyHeaders:false}),registerLimit=rateLimit({windowMs:60*60*1000,limit:5,standardHeaders:'draft-7',legacyHeaders:false}),mailLimit=rateLimit({windowMs:60*60*1000,limit:60,standardHeaders:'draft-7',legacyHeaders:false});
 app.use((req,res,next)=>{if(['POST','PUT','PATCH','DELETE'].includes(req.method)&&req.get('origin')){try{if(new URL(req.get('origin')).host!==req.get('host'))return res.status(403).json({error:'Request origin is not allowed'})}catch{return res.status(403).json({error:'Invalid request origin'})}}next()});
@@ -87,8 +88,8 @@ app.get('/api/mailbox/status',requireAuth,async(req,res)=>{const s=await getMail
 app.get('/api/settings/mailbox',requireAuth,async(req,res)=>{const s=await getMailboxSettings(req.session.userId);res.json({configured:Boolean(s),fromName:s?.from_name||'',fromAddress:s?.from_address||'',smtpHost:s?.smtp_host||'mail.spacemail.com',smtpPort:s?.smtp_port||465,smtpSecure:s?.smtp_secure??true,smtpUser:s?.smtp_user||'',imapHost:s?.imap_host||'mail.spacemail.com',imapPort:s?.imap_port||993,imapSecure:s?.imap_secure??true,imapUser:s?.imap_user||'',hasSmtpPassword:Boolean(s?.smtp_pass_enc),hasImapPassword:Boolean(s?.imap_pass_enc)})});
 app.put('/api/settings/mailbox',requireAuth,async(req,res)=>{const b=req.body||{},smtpPort=Number(b.smtpPort||465),imapPort=Number(b.imapPort||993);if(!b.smtpHost||!b.smtpUser||!b.imapHost||!b.imapUser)return res.status(400).json({error:'SMTP and IMAP server details are required'});if(!Number.isInteger(smtpPort)||smtpPort<1||smtpPort>65535||!Number.isInteger(imapPort)||imapPort<1||imapPort>65535)return res.status(400).json({error:'Enter valid server ports'});if(!emailOk(String(b.fromAddress||'')))return res.status(400).json({error:'Enter a valid sending email address'});try{await upsertMailboxSettings(req.session.userId,{fromName:String(b.fromName||'Ethan Email').slice(0,100),fromAddress:String(b.fromAddress).trim().toLowerCase(),smtpHost:String(b.smtpHost).trim().slice(0,255),smtpPort,smtpSecure:Boolean(b.smtpSecure),smtpUser:String(b.smtpUser).trim().slice(0,254),smtpPassEnc:b.smtpPass?encrypt(b.smtpPass):'',imapHost:String(b.imapHost).trim().slice(0,255),imapPort,imapSecure:Boolean(b.imapSecure),imapUser:String(b.imapUser).trim().slice(0,254),imapPassEnc:b.imapPass?encrypt(b.imapPass):''});await audit(req.session.userId,'mail.settings.updated');res.json({ok:true})}catch(e){res.status(400).json({error:'Could not save mailbox settings. Check the encryption configuration.'})}});
 app.get('/api/status/verify',requireAuth,async(req,res)=>{try{const c=await mailboxFor(req.session.userId);if(!c)return res.status(400).json({error:'Connect a mailbox first'});res.json(await verifyServices(c))}catch(e){res.status(400).json({error:'Could not test the mail connection'})}});
-app.get('/api/mail/inbox',requireAuth,mailLimit,async(req,res)=>{try{const u=await getUserById(req.session.userId),limit=Math.min(Number(req.query.limit)||50,100);if(u?.mailbox_provider==='resend'){const folder=['inbox','starred','archive','trash'].includes(String(req.query.folder||''))?String(req.query.folder):'inbox',filter=req.query.filter==='unread'?'unread':'all',search=String(req.query.q||'').trim().slice(0,200);res.set('Cache-Control','no-store');return res.json({messages:await listReceivedEmails(req.session.userId,limit,{folder,filter,search})})}const c=await mailboxFor(req.session.userId);if(!imapConfigured(c))return res.status(400).json({error:'Your mailbox is not active yet. Request an Ethan address or connect an existing mailbox in Settings.'});let rows=await listInbox(c,limit);if(req.query.filter==='unread')rows=rows.filter(m=>m.unread);const q=String(req.query.q||'').toLowerCase();if(q)rows=rows.filter(m=>(m.subject+' '+(m.from||m.fromAddress||'')+' '+(m.text||'')).toLowerCase().includes(q));res.json({messages:rows})}catch(e){console.error('Inbox load failed:',e.message);res.status(502).json({error:'Could not load inbox. Check your mailbox connection.'})}});
-app.get('/api/mail/inbox/:uid',requireAuth,mailLimit,async(req,res)=>{const uid=Number(req.params.uid);if(!Number.isSafeInteger(uid)||uid<1)return res.status(400).json({error:'Invalid message reference'});try{const u=await getUserById(req.session.userId);if(u?.mailbox_provider==='resend'){const msg=await getReceivedEmail(req.session.userId,uid);if(!msg)return res.status(404).json({error:'Message not found'});return res.json(msg)}const c=await mailboxFor(req.session.userId),msg=await readMessage(c,uid);if(!msg)return res.status(404).json({error:'Message not found'});res.json(msg)}catch(e){res.status(502).json({error:'Could not open this message'})}});app.patch('/api/mail/inbox/:uid',requireAuth,mailLimit,async(req,res)=>{const uid=Number(req.params.uid),action=String(req.body?.action||'');if(!Number.isSafeInteger(uid)||uid<1)return res.status(400).json({error:'Invalid message reference'});const u=await getUserById(req.session.userId);if(u?.mailbox_provider!=='resend')return res.status(409).json({error:'Message actions are currently available for Ethan-hosted mailboxes.'});const changes={};if(action==='star')changes.isStarred=true;else if(action==='unstar')changes.isStarred=false;else if(action==='read')changes.isRead=true;else if(action==='unread')changes.isRead=false;else if(action==='archive')changes.mailboxFolder='archive';else if(action==='trash')changes.mailboxFolder='trash';else if(action==='restore')changes.mailboxFolder='inbox';else return res.status(400).json({error:'Unsupported message action'});try{const updated=await updateReceivedEmailState(req.session.userId,uid,changes);if(!updated)return res.status(404).json({error:'Message not found'});await audit(req.session.userId,'mail.message_'+action,{messageId:uid});res.json({ok:true,message:updated})}catch(e){console.error('Inbox message action failed:',e.message);res.status(500).json({error:'Could not update this message. Please try again.'})}});
+app.get('/api/mail/inbox',requireAuth,mailLimit,async(req,res)=>{try{const u=await getUserById(req.session.userId),limit=Math.min(Number(req.query.limit)||50,100);if(u?.mailbox_provider==='resend'){const folder=['inbox','starred','archive','trash','snoozed'].includes(String(req.query.folder||''))?String(req.query.folder):'inbox',filter=req.query.filter==='unread'?'unread':'all',search=String(req.query.q||'').trim().slice(0,200);res.set('Cache-Control','no-store');return res.json({messages:await listReceivedEmails(req.session.userId,limit,{folder,filter,search})})}const c=await mailboxFor(req.session.userId);if(!imapConfigured(c))return res.status(400).json({error:'Your mailbox is not active yet. Request an Ethan address or connect an existing mailbox in Settings.'});let rows=await listInbox(c,limit);if(req.query.filter==='unread')rows=rows.filter(m=>m.unread);const q=String(req.query.q||'').toLowerCase();if(q)rows=rows.filter(m=>(m.subject+' '+(m.from||m.fromAddress||'')+' '+(m.text||'')).toLowerCase().includes(q));res.json({messages:rows})}catch(e){console.error('Inbox load failed:',e.message);res.status(502).json({error:'Could not load inbox. Check your mailbox connection.'})}});
+app.get('/api/mail/inbox/:uid',requireAuth,mailLimit,async(req,res)=>{const uid=Number(req.params.uid);if(!Number.isSafeInteger(uid)||uid<1)return res.status(400).json({error:'Invalid message reference'});try{const u=await getUserById(req.session.userId);if(u?.mailbox_provider==='resend'){const msg=await getReceivedEmail(req.session.userId,uid);if(!msg)return res.status(404).json({error:'Message not found'});return res.json(msg)}const c=await mailboxFor(req.session.userId),msg=await readMessage(c,uid);if(!msg)return res.status(404).json({error:'Message not found'});res.json(msg)}catch(e){res.status(502).json({error:'Could not open this message'})}});app.patch('/api/mail/inbox/:uid',requireAuth,mailLimit,async(req,res)=>{const uid=Number(req.params.uid),action=String(req.body?.action||'');if(!Number.isSafeInteger(uid)||uid<1)return res.status(400).json({error:'Invalid message reference'});const u=await getUserById(req.session.userId);if(u?.mailbox_provider!=='resend')return res.status(409).json({error:'Message actions are currently available for Ethan-hosted mailboxes.'});const changes={};if(action==='star')changes.isStarred=true;else if(action==='unstar')changes.isStarred=false;else if(action==='read')changes.isRead=true;else if(action==='unread')changes.isRead=false;else if(action==='archive')changes.mailboxFolder='archive';else if(action==='trash')changes.mailboxFolder='trash';else if(action==='restore')changes.mailboxFolder='inbox';else if(action==='snooze'){const when=new Date(req.body?.snoozedUntil);if(!Number.isFinite(when.getTime())||when.getTime()<=Date.now()+30*1000||when.getTime()>Date.now()+365*24*60*60*1000)return res.status(400).json({error:'Choose a snooze time between 30 seconds and 1 year from now'});changes.snoozedUntil=when.toISOString()}else if(action==='unsnooze')changes.snoozedUntil=null;else return res.status(400).json({error:'Unsupported message action'});try{const updated=await updateReceivedEmailState(req.session.userId,uid,changes);if(!updated)return res.status(404).json({error:'Message not found'});await audit(req.session.userId,'mail.message_'+action,{messageId:uid});res.json({ok:true,message:updated})}catch(e){console.error('Inbox message action failed:',e.message);res.status(500).json({error:'Could not update this message. Please try again.'})}});
 app.get('/api/mail/diagnostics',requireAuth,async(req,res)=>{
   try{
     const u=req.currentUser,c=await mailboxFor(u.id),isResend=u.mailbox_provider==='resend';
@@ -103,29 +104,76 @@ app.get('/api/mail/diagnostics',requireAuth,async(req,res)=>{
   }catch(e){res.status(500).json({error:'Could not check your email sending configuration.'})}
 });
 app.get('/api/mail/recipients',requireAuth,async(req,res)=>{try{const recipients=await listMailRecipients(req.session.userId);res.set('Cache-Control','no-store').json({recipients})}catch(e){console.error('Recipient directory failed:',e.message);res.status(500).json({error:'Could not load Ethan recipients.'})}});
+app.get('/api/mail/preferences',requireAuth,async(req,res)=>{try{const p=await getMailPreferences(req.session.userId);res.set('Cache-Control','no-store').json({signature:p.mail_signature||''})}catch(e){res.status(500).json({error:'Could not load mail preferences'})}});
+app.put('/api/mail/preferences',requireAuth,async(req,res)=>{try{const signature=String(req.body?.signature||'').slice(0,10000);const p=await updateMailSignature(req.session.userId,signature);await audit(req.session.userId,'mail.signature.updated',{length:signature.length});res.json({ok:true,signature:p?.mail_signature||''})}catch(e){res.status(500).json({error:'Could not save your signature'})}});
+app.post('/api/mail/attachments',requireAuth,mailLimit,async(req,res)=>{
+  const filename=String(req.body?.filename||'attachment').replace(/[\\/\r\n\0]/g,'_').replace(/[^\w .()\[\]-]/g,'_').trim().slice(0,150)||'attachment';
+  const contentType=String(req.body?.contentType||'application/octet-stream').slice(0,160);
+  const encoded=String(req.body?.contentBase64||'');
+  if(!encoded||!/^[A-Za-z0-9+/]+={0,2}$/.test(encoded))return res.status(400).json({error:'Choose a valid file to attach'});
+  const buffer=Buffer.from(encoded,'base64');
+  if(!buffer.length||buffer.length>2.5*1024*1024)return res.status(413).json({error:'Each attachment must be 2.5 MB or smaller'});
+  if(buffer.toString('base64').replace(/=+$/,'')!==encoded.replace(/=+$/,''))return res.status(400).json({error:'The attachment encoding is invalid'});
+  try{
+    if(!process.env.BLOB_READ_WRITE_TOKEN)return res.status(503).json({error:'Private attachment storage is not configured'});
+    const {put,del}=await import('@vercel/blob');
+    const pathname='email-attachments/'+req.session.userId+'/'+crypto.randomUUID()+'-'+filename;
+    const blob=await put(pathname,buffer,{access:'private',contentType,addRandomSuffix:true,token:process.env.BLOB_READ_WRITE_TOKEN});
+    try{const row=await createEmailAttachment({userId:req.session.userId,blobPath:blob.pathname,filename,contentType,sizeBytes:buffer.length});await audit(req.session.userId,'mail.attachment.uploaded',{attachmentId:row.id,size:buffer.length});res.status(201).json({attachment:row})}
+    catch(e){try{await del(blob.pathname,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN})}catch{}throw e}
+  }catch(e){console.error('Attachment upload failed:',e.message);res.status(500).json({error:'Could not securely upload this attachment. Please try again.'})}
+});
+app.get('/api/mail/attachments/:id',requireAuth,mailLimit,async(req,res)=>{
+  const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<1)return res.status(400).json({error:'Invalid attachment reference'});
+  try{
+    const attachment=await getEmailAttachment(req.session.userId,id);if(!attachment||!attachment.sentEmailId)return res.status(404).json({error:'Attachment not found'});
+    const {get}=await import('@vercel/blob');const blob=await get(attachment.pathname,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN});if(!blob||blob.statusCode!==200)return res.status(404).json({error:'Attachment file is unavailable'});
+    const safeName=attachment.filename.replace(/[\r\n"]/g,'_');
+    res.set({'Content-Type':attachment.contentType||'application/octet-stream','Content-Disposition':"attachment; filename*=UTF-8''"+encodeURIComponent(safeName),'X-Content-Type-Options':'nosniff','Cache-Control':'private, no-store'});
+    Readable.fromWeb(blob.stream).pipe(res);
+  }catch(e){console.error('Attachment download failed:',e.message);if(!res.headersSent)res.status(500).json({error:'Could not download this attachment'})}
+});
+app.delete('/api/mail/attachments/:id',requireAuth,mailLimit,async(req,res)=>{
+  const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<1)return res.status(400).json({error:'Invalid attachment reference'});
+  try{const row=await deletePendingEmailAttachment(req.session.userId,id);if(!row)return res.status(404).json({error:'Pending attachment not found'});const {del}=await import('@vercel/blob');await del(row.pathname,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN});res.json({ok:true})}
+  catch(e){console.error('Pending attachment delete failed:',e.message);res.status(500).json({error:'Could not remove this attachment'})}
+});
 app.post('/api/mail/send',requireAuth,mailLimit,async(req,res)=>{
   const rawTo=Array.isArray(req.body.to)?req.body.to.join(','):String(req.body.to||'');
   const recipients=[...new Set(rawTo.split(/[;,\r\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
   const to=recipients.join(', '),subject=String(req.body.subject||'').slice(0,300),text=String(req.body.text||'').slice(0,100000);
+  const attachmentIds=[...new Set((Array.isArray(req.body.attachmentIds)?req.body.attachmentIds:[]).map(Number).filter(x=>Number.isSafeInteger(x)&&x>0))];
   if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter one valid email address, or separate multiple addresses with commas or semicolons (up to 50).'});
+  if(attachmentIds.length>10)return res.status(400).json({error:'You can attach up to 10 files to one message.'});
   const u=req.currentUser,isResend=u.mailbox_provider==='resend',provider=isResend?'Resend':'SMTP';
   try{
     let result;
+    const attachmentRows=await getPendingEmailAttachments(u.id,attachmentIds);
+    if(attachmentRows.length!==attachmentIds.length)return res.status(400).json({error:'One or more attachments are no longer available. Remove them and upload again.'});
+    const {get}=attachmentRows.length?await import('@vercel/blob'):{};
+    const preparedAttachments=[];
+    for(const item of attachmentRows){
+      const blob=await get(item.pathname,{access:'private',token:process.env.BLOB_READ_WRITE_TOKEN});
+      if(!blob||blob.statusCode!==200)throw new Error('An uploaded attachment could not be retrieved');
+      const chunks=[];for await(const chunk of blob.stream)chunks.push(Buffer.from(chunk));
+      const content=Buffer.concat(chunks);
+      preparedAttachments.push({filename:item.filename,content,contentType:item.contentType,base64:content.toString('base64')});
+    }
     if(isResend){
       if(!u.mailbox_address||u.mailbox_status!=='active')return res.status(409).json({error:'Your Ethan mailbox is not fully active. Contact the administrator.'});
       if(!process.env.RESEND_API_KEY)return res.status(503).json({error:'The Resend API key is not configured. Contact the administrator.'});
       const fromName=String(u.display_name||'Ethan Email').replaceAll('<',' ').replaceAll('>',' ').replaceAll(String.fromCharCode(10),' ').replaceAll(String.fromCharCode(13),' ').trim().slice(0,100)||'Ethan Email';
-      const {data,error}=await resend().emails.send({from:fromName+' <'+u.mailbox_address+'>',to:recipients,subject:subject||'(no subject)',text:text||''});
+      const {data,error}=await resend().emails.send({from:fromName+' <'+u.mailbox_address+'>',to:recipients,subject:subject||'(no subject)',text:text||'',...(preparedAttachments.length?{attachments:preparedAttachments.map(a=>({filename:a.filename,content:a.base64,contentType:a.contentType}))}:{})});
       if(error){const x=new Error(error.message||'Resend send failed');x.code=error.name||error.code||'RESEND_ERROR';x.statusCode=error.statusCode||error.status;throw x}
       result={messageId:data?.id,accepted:recipients,rejected:[],provider:'Resend'};
     }else{
       const c=await mailboxFor(u.id);
       if(!smtpConfigured(c))return res.status(409).json({error:'Activate your Ethan mailbox or connect an SMTP mailbox first.'});
-      result=await sendMail(c,{to:recipients,subject,text});
+      result=await sendMail(c,{to:recipients,subject,text,attachments:preparedAttachments.map(a=>({filename:a.filename,content:a.content,contentType:a.contentType}))});
       result.provider='SMTP';
     }
     let savedToSentFolder=true;
-    try{await saveSentEmail({userId:u.id,fromAddress:u.mailbox_address||u.email,recipient:to,subject,textBody:text,providerMessageId:result.messageId||''})}
+    try{const sentRow=await saveSentEmail({userId:u.id,fromAddress:u.mailbox_address||u.email,recipient:to,subject,textBody:text,providerMessageId:result.messageId||''});if(attachmentIds.length)await attachEmailAttachments(u.id,attachmentIds,sentRow.id)}
     catch(saveError){savedToSentFolder=false;console.error('Email accepted by provider but Sent-folder save failed',{userId:u.id,message:saveError.message})}
     try{await audit(u.id,'mail.sent',{to:recipients,subject,provider,messageId:result.messageId||'',savedToSentFolder})}
     catch(auditError){console.error('Mail sent audit write failed:',auditError.message)}
@@ -143,6 +191,30 @@ app.post('/api/mail/send',requireAuth,mailLimit,async(req,res)=>{
     else if(provider==='SMTP'&&['ECONNECTION','ETIMEDOUT','EHOSTUNREACH','ENOTFOUND'].includes(String(e.code||'').toUpperCase()))message='Ethan Email could not connect to the SMTP server. Check its host, port and availability.';
     return res.status(502).json({error:message});
   }
+});
+app.get('/api/mail/scheduled',requireAuth,async(req,res)=>{try{res.set('Cache-Control','no-store').json({messages:await listScheduledEmails(req.session.userId)})}catch(e){res.status(500).json({error:'Could not load scheduled messages'})}});
+app.post('/api/mail/schedule',requireAuth,mailLimit,async(req,res)=>{
+  const u=req.currentUser;if(u.mailbox_provider!=='resend'||!u.mailbox_address||u.mailbox_status!=='active')return res.status(409).json({error:'Scheduled sending is currently available for active Ethan-hosted Resend mailboxes only.'});
+  const rawTo=Array.isArray(req.body.to)?req.body.to.join(','):String(req.body.to||'');
+  const recipients=[...new Set(rawTo.split(/[;,\r\n]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];
+  const subject=String(req.body.subject||'').slice(0,300),text=String(req.body.text||'').slice(0,100000),when=new Date(req.body.scheduledAt);
+  if(!recipients.length||recipients.length>50||recipients.some(x=>!emailOk(x)))return res.status(400).json({error:'Enter at least one valid recipient address.'});
+  if(!Number.isFinite(when.getTime())||when.getTime()<Date.now()+60*1000||when.getTime()>Date.now()+30*24*60*60*1000)return res.status(400).json({error:'Choose a send time at least 1 minute from now and no more than 30 days ahead.'});
+  if(!process.env.RESEND_API_KEY)return res.status(503).json({error:'The Resend API key is not configured.'});
+  try{
+    const fromName=String(u.display_name||'Ethan Email').replace(/[<>\r\n]/g,' ').trim().slice(0,100)||'Ethan Email';
+    const {data,error}=await resend().emails.send({from:fromName+' <'+u.mailbox_address+'>',to:recipients,subject:subject||'(no subject)',text:text||'',scheduledAt:when.toISOString()});
+    if(error)throw new Error(error.message||'Resend could not schedule the message');
+    if(!data?.id)throw new Error('Resend did not return a scheduled message reference');
+    const row=await saveScheduledEmail({userId:u.id,providerMessageId:data.id,recipient:recipients.join(', '),subject,textBody:text,scheduledAt:when.toISOString()});
+    await audit(u.id,'mail.scheduled',{scheduledId:row.id,providerMessageId:data.id,scheduledAt:when.toISOString()});
+    res.status(201).json({ok:true,message:'Your email has been scheduled.',scheduled:row});
+  }catch(e){console.error('Scheduled mail failed:',e.message);res.status(502).json({error:'Could not schedule this email. '+String(e.message||'').slice(0,180)})}
+});
+app.delete('/api/mail/scheduled/:id',requireAuth,mailLimit,async(req,res)=>{
+  const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<1)return res.status(400).json({error:'Invalid scheduled message'});
+  try{const record=await getScheduledEmail(req.session.userId,id);if(!record||record.status!=='scheduled'||new Date(record.scheduledAt).getTime()<=Date.now())return res.status(404).json({error:'Scheduled message was not found or is already due.'});const {data,error}=await resend().emails.cancel(record.providerMessageId);if(error)throw new Error(error.message||'Provider could not cancel this email');const canceled=await cancelScheduledEmailRecord(req.session.userId,id);if(!canceled)return res.status(409).json({error:'The scheduled message could not be marked canceled.'});await audit(req.session.userId,'mail.schedule.canceled',{scheduledId:id});res.json({ok:true})}
+  catch(e){console.error('Scheduled message cancellation failed:',e.message);res.status(502).json({error:'Could not cancel this scheduled message. '+String(e.message||'').slice(0,160)})}
 });
 app.get('/api/mail/sent',requireAuth,async(req,res)=>res.json({messages:await listSentEmails(req.session.userId,Math.min(Number(req.query.limit)||100,200))}));
 app.get('/api/drafts',requireAuth,async(req,res)=>res.json({drafts:await listDrafts(req.session.userId)}));
