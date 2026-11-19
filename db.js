@@ -74,7 +74,7 @@ async function listReceivedEmails(userId,limit=50,options={}){
   const search=String(options.search||'').trim().slice(0,200);
   const clauses=['user_id=$1'];
   const params=[userId];
-  if(folder==='starred')clauses.push("is_starred=TRUE AND mailbox_folder<>'trash'");
+  if(folder==='starred')clauses.push("is_starred=TRUE AND mailbox_folder<>'trash' AND (snoozed_until IS NULL OR snoozed_until<=NOW())");
   else if(folder==='snoozed')clauses.push("snoozed_until>NOW() AND mailbox_folder<>'trash'");
   else if(folder==='inbox')clauses.push("mailbox_folder='inbox' AND (snoozed_until IS NULL OR snoozed_until<=NOW())");
   else if(['archive','trash'].includes(folder)){params.push(folder);clauses.push('mailbox_folder=$'+params.length)}
