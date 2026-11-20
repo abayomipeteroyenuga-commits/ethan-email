@@ -243,3 +243,52 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{
 .message-attachments a:hover{background:#edf4ff}
 .message-attachments small{color:#8290a4}
 @media(max-width:650px){.compose-window form{max-height:calc(100vh - 90px);overflow-y:auto}.compose-help{font-size:9px}.attachment-chip{flex-wrap:wrap}.attachment-chip small{margin-left:0}}
+
+
+/* Keep reply/compose actions visible on short screens and small viewports. */
+.modal{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.compose-window{
+  display:flex;
+  flex-direction:column;
+  width:min(100%,640px);
+  max-height:calc(100vh - 36px);
+  max-height:calc(100dvh - 36px);
+  min-height:0;
+}
+.compose-window header{flex:0 0 auto}
+.compose-window form{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  min-height:0;
+  max-height:none;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.compose-footer{
+  position:sticky;
+  bottom:0;
+  z-index:3;
+  flex:0 0 auto;
+  background:#fff;
+  padding:12px 0 max(10px,env(safe-area-inset-bottom));
+  margin-top:12px;
+  border-top:1px solid #e7edf5;
+}
+.compose-footer button[type="submit"]{min-width:132px}
+@media(max-width:650px){
+  .modal{align-items:flex-end;padding:8px}
+  .compose-window{width:100%;max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);border-radius:16px}
+  .compose-window form{max-height:none;min-height:0;padding:8px 16px 12px}
+  .compose-footer{gap:7px;padding:11px 0 max(12px,env(safe-area-inset-bottom));margin-top:10px}
+  .compose-footer span{width:100%;flex:1 0 100%}
+  .compose-footer button{flex:1 1 auto;min-height:42px;padding:11px 9px}
+  .compose-footer button[type="submit"]{flex:1 0 100%;min-height:48px;order:-1}
+}
